@@ -1481,7 +1481,7 @@ int main(void)
 	FILE *fp;
 	char s[30], outputFile[100];
 
-	l = 24050;
+	l = 24050; // Aantal regels van GSPC
 	lags = 250;
 
 	B = 1000;
@@ -1524,20 +1524,20 @@ int main(void)
 	zigset(seed);
 	srand(seed);
 
-	for (i = 0; i < (itno * trials); i++)
+	for (i = 0; i < (itno * trials); i++) // 20
 	{
-		for (j = 0; j < pdim; j++)
-			tetainit[i][j] = muaux[j] * (0.99 + 0.02 * uni());
+		for (j = 0; j < pdim; j++) // 4, dus 80 keer in totaal
+			tetainit[i][j] = muaux[j] * (0.99 + 0.02 * uni()); // Dit gebruikt weer de ziggurat method
 	}
 
 	fp = fopen("GSPC19280104-20230929.txt", "r");
 
 	j = 0;
 
-	while (fgets(s, 30, fp) != NULL)
+	while (fgets(s, 30, fp) != NULL) // Maakt een matrix van GSPC
 	{
 		if (j >= 0)
-			rts[0][j] = atof(s);
+			rts[0][j] = atof(s); // rts is een matrix van 24050 x 1
 		j++;
 	}
 	fclose(fp);
