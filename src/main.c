@@ -1276,6 +1276,8 @@ double PF(double *x, double *rt, double *pt, double **z2, double **z3)
 	int *sigmacount;
 
 	jz, jsr = 123456789;
+	// printf("Value of jz is: %i\n", jz);
+	// printf("Value of jsr is: %i\n", jsr);
 
 	seed = 1111;
 
