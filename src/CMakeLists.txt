@@ -15,3 +15,4 @@ endif()
 # set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${FullOutputDir}")
 
 add_executable(SV-file main.c)
+target_link_libraries(SV-file m)
