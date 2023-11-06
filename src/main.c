@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <math.h>
-#include <malloc.h>
+// #include <malloc.h>
 
 #define ALF 1.0e-14 /*Ensures sufficient decrease in function value in lnsrch.*/
 #define ITMAX 200	/*Maximum allowed number of iterations in dfpmin*/
