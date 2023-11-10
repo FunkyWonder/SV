@@ -1508,11 +1508,11 @@ int main(void)
 	lambda = alocvec(pdim);
 	mus = alocvec(B);
 	muss = alocvec(B);
-	monthmut = alocvec(l);
-	shortmut = alocvec(l);
-	driftmut = alocvec(l);
-	ma50t = alocvec(l);
-	ma250t = alocvec(l);
+	monthmut = alocvec(l); // Vector for storing the monthly mutation rates.
+	shortmut = alocvec(l); // Vector for storing the short-term mutation rates.
+	driftmut = alocvec(l); // Vector for storing the drift mutation rates.
+	ma50t = alocvec(l);	 // Vector for storing the moving average over 50 days.
+	ma250t = alocvec(l); // Vector for storing the moving average over 250 days.
 
 	muaux[0] = -0.190749834;
 	muaux[1] = 0.977385697;
