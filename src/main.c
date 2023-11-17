@@ -50,6 +50,10 @@ double **Weightmatrix;
 
 double *alocvec(int n)
 {
+	/**
+	 * @param n number of elements to allocate
+	 * @return pointer to allocated array of n elements
+	*/
 	double *z;
 
 	z = (double *)malloc(sizeof(double) * n);
@@ -64,6 +68,11 @@ double *alocvec(int n)
 
 double **alocmat(int m, int n)
 {
+	/**
+	 * @param m number of rows in the matrix
+	 * @param n number of columns in the matrix
+	 * @return pointer to allocated array of m elements
+	*/
 	double **z;
 	int i;
 
@@ -87,6 +96,11 @@ double **alocmat(int m, int n)
 
 int freemat(double **P, int m)
 {
+	/**
+	 * @param P a pointer to a matrix of pointers to doubles
+	 * @param m the number of rows in the matrix
+	 * @return 1 if successful, 0 otherwise
+	*/
 	int i;
 
 	for (i = 0; i < m; i++)
@@ -97,6 +111,10 @@ int freemat(double **P, int m)
 
 int *alocintvec(int n)
 {
+	/**
+	 * @param n the number of elements in the vector
+	 * @return a pointer to a vector of integers
+	 */
 	int *z;
 	z = (int *)malloc(sizeof(int) * n);
 	if (z == NULL)
@@ -110,17 +128,24 @@ int *alocintvec(int n)
 
 int initm(double **M1, double **M2, int m, int n)
 {
+	/**
+	 * @param M1 a pointer to a matrix of doubles
+	 * @param M2 a pointer to a matrix of doubles
+	 * @param m the number of rows in the matrix
+	 * @param n the number of columns in the matrix
+	 * @return 0 if successful, 1 if not
+	 */
 	double **P, **R, *Pv, *Rv;
 	int i, j;
 
 	P = M1;
 	R = M2;
 
-	for (i = 0; i < m; i++)
+	for (i = 0; i < m; i++) // Loop over rows
 	{
-		Pv = *P;
+		Pv = *P; 
 		Rv = *R;
-		for (j = 0; j < n; j++)
+		for (j = 0; j < n; j++) // Loop over columns
 		{
 			*Pv = *Rv;
 			Pv++;
@@ -153,6 +178,13 @@ int initv(double *U, double *V, int n)
 
 int prodcv(double *y1, double c, int n, double *res)
 {
+	/**
+	 *@param y1 the vector of values
+	 *@param c the constant
+	 *@param n the length of the vector
+	 *@param res the result vector
+	 *@return 1 if success, 0 if failed
+	*/
 	int i;
 	double *y, *z;
 
@@ -475,8 +507,13 @@ float efix(void)
 /* Set up tables for RNOR */
 void zigset_nor(uint32 jsrseed)
 {
-	const double m1 = 2147483648.0;
-	double dn = 3.442619855899, tn = dn, vn = 9.91256303526217e-3, q;
+	/**
+	 * Set up tables for RNOR 
+	 * @param jsrseed: 
+	 * @return none
+	*/
+	const double m1 = 2147483648.0; 
+	double dn = 3.442619855899, tn = dn, vn = 9.91256303526217e-3, q; 
 	int i;
 
 	jsr ^= jsrseed;
@@ -534,6 +571,10 @@ void zigset_exp(uint32 jsrseed)
 /* Set up tables */
 void zigset(uint32 jsrseed)
 {
+	/**
+	* Set up tables 
+	*@param jsrseed: random number generator seed
+	*/
 	zigset_nor(jsrseed);
 	zigset_exp(jsrseed);
 }
@@ -644,13 +685,13 @@ double PF(double *x, double *rt, double *pt, double **z2, double **z3)
 
 			/******** Step 1 *******************/
 
-			hsV[cont] = hs[cont][1] = mu + phi * hs[cont][1] + sigma * rnor();
+	hsV[cont] = hs[cont][1] = mu + phi * hs[cont][1] + sigma * rnor();
 
-			sigmaxt = exp(hs[cont][1] / 2);
+	sigmaxt = exp(hs[cont][1] / 2);
 
-			driftmu = mud;
+	driftmu = mud;
 
-			Probi[cont] = pdf_norm(rt[t], driftmu, sigmaxt);
+	Probi[cont] = pdf_norm(rt[t], driftmu, sigmaxt);
 		}
 
 		val = 0.0;
@@ -745,20 +786,20 @@ int main(void)
 	double *pt, *mus, *muss, *tetaCons, *lambda;
 	double **Pf, **test, **StdAux, **tetainit, **rts;
 
-	n = 250;
+	n = 250; 
 
-	FILE *fp;
-	char s[30], outputFile[100];
+	FILE *fp; // File pointer
+	char s[30], outputFile[100]; 
 
-	l = 24050; // Aantal regels van GSPC
-	lags = 250;
+	l = 24050; // Length of the input file
+	lags = 250; // Number of lags 
 
-	B = 1000;
-	trials = 20;
-	itno = 1;
+	B = 1000; // Number of points in the time series
+	trials = 20; // Number of trials
+	itno = 1; // Number of iterations
 
-	sqrt2dPi = sqrt(2.0 / miPi);
-	csqtr = sqrt(ctrunc);
+	sqrt2dPi = sqrt(2.0 / miPi); 
+	csqtr = sqrt(ctrunc); 
 	sqrt2 = sqrt(2.0);
 	pd1 = exp(-ctrunc / 2) / sqrt(2 * miPi);
 	D1p = pow(fabs(-csqtr), ctrunc) * pd1;
@@ -768,20 +809,20 @@ int main(void)
 
 	/*printf("phi=%.12f\n",phiconst);*/
 
-	muaux = alocvec(pdim);
-	tetaCons = alocvec(pdim);
-	tetainit = alocmat((itno * trials), pdim);
-	rts = alocmat(itno, l);
-	pt = alocvec(l);
-	hsV = alocvec(B);
-	lambda = alocvec(pdim);
-	mus = alocvec(B);
-	muss = alocvec(B);
-	monthmut = alocvec(l);
-	shortmut = alocvec(l);
-	driftmut = alocvec(l);
-	ma50t = alocvec(l);
-	ma250t = alocvec(l);
+	muaux = alocvec(pdim); // Vector for storing the auxiliary variables.
+	tetaCons = alocvec(pdim); // Vector for storing the constraint variables.
+	tetainit = alocmat((itno * trials), pdim); // Matrix for storing the initial constraint variables.
+	rts = alocmat(itno, l); // Matrix for storing the time series. 1 by 24050
+	pt = alocvec(l); // Vector for storing the time series.
+	hsV = alocvec(B); // Vector for storing the Hessian values.
+	lambda = alocvec(pdim); // Vector for storing the lambda values.
+	mus = alocvec(B); 
+	muss = alocvec(B); 
+	monthmut = alocvec(l); // Vector for storing the monthly mutation rates.
+	shortmut = alocvec(l); // Vector for storing the short-term mutation rates.
+	driftmut = alocvec(l); // Vector for storing the drift mutation rates.
+	ma50t = alocvec(l);	 // Vector for storing the moving average over 50 days.
+	ma250t = alocvec(l); // Vector for storing the moving average over 250 days.
 
 	muaux[0] = -0.190749834;
 	muaux[1] = 0.977385697;
@@ -790,24 +831,26 @@ int main(void)
 
 	seed = 1;
 
-	zigset(seed);
-	srand(seed);
+	zigset(seed); 
+	srand(seed); 
 
-	for (i = 0; i < (itno * trials); i++) // 20
+	for (i = 0; i < (itno * trials); i++) // Loops over the trials times itno.
 	{
-		for (j = 0; j < pdim; j++) // 4, dus 80 keer in totaal
-			tetainit[i][j] = muaux[j] * (0.99 + 0.02 * uni()); // Dit gebruikt weer de ziggurat method
+		for (j = 0; j < pdim; j++) // pdim=4, trials=20, and itno=1
+			// For each trial, fill a vector with "muaux[j] * (0.99 + 0.02 * uni())" (uses ziggurat)
+			tetainit[i][j] = muaux[j] * (0.99 + 0.02 * uni()); 
 	}
 
-	fp = fopen("GSPC19280104-20230929.txt", "r");
+	fp = fopen("GSPC19280104-20230929.txt", "r"); 
 
 	j = 0;
 
-	while (fgets(s, 30, fp) != NULL) // Maakt een matrix van GSPC
+	// Stores GSPC19280104-20230929.txt data in rts.
+	while (fgets(s, 30, fp) != NULL) // Reads the data from the file line by line. Stops when the end of the file is reached.
 	{
-		if (j >= 0)
-			rts[0][j] = atof(s); // rts is een matrix van 24050 x 1
-		j++;
+		if (j >= 0) // This is not needed.
+			rts[0][j] = atof(s); // Fill the first column of rts with the data of the line converted to float.
+		j++; // Increments the rows counter.
 	}
 	fclose(fp);
 
@@ -828,7 +871,7 @@ int main(void)
 
 	for (jcont = 0; jcont < trials; jcont++)
 	{
-		test = nlminLvectSimplex((*PF), tetainit[jcont], 2000, lambda, rts[0], pt, Weightmatrix, Weightmatrix, EPS1, pdim);
+		test = nlminLvectSimplex((*PF), tetainit[jcont], 2000, lambda, rts[0], pt, Weightmatrix, Weightmatrix, EPS1, pdim); 
 		test[0][2] = fabs(test[0][2]);
 
 		if (test[0][pdim] < minval)
@@ -838,10 +881,11 @@ int main(void)
 			minval = test[0][pdim];
 		}
 
+		// This part of the code writes the results to a file.
 		fp = fopen(outputFile, "a");
-		for (i = 0; i < pdim; i++)
-			fprintf(fp, "%.12f	", test[0][i]);
-		fprintf(fp, "%.16f\n", test[0][pdim]);
+		for (i = 0; i < pdim; i++) 
+			fprintf(fp, "%.12f	", test[0][i]); // Format the results to a fixed precision.
+		fprintf(fp, "%.16f\n", test[0][pdim]); 
 		fclose(fp);
 
 		/*	printf("jcont=%d\n",jcont);
@@ -850,6 +894,7 @@ int main(void)
 		freemat(test, pdim + 1);
 	}
 
+	// This part of the code frees the memory allocated for the matrices and vectors.
 	free(muaux);
 	freemat(rts, itno);
 	free(tetaCons);
