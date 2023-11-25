@@ -126,38 +126,6 @@ int *alocintvec(int n)
 	return z;
 }
 
-int initm(double **M1, double **M2, int m, int n)
-{
-	/**
-	 * @param M1 a pointer to a matrix of doubles
-	 * @param M2 a pointer to a matrix of doubles
-	 * @param m the number of rows in the matrix
-	 * @param n the number of columns in the matrix
-	 * @return 0 if successful, 1 if not
-	 */
-	double **P, **R, *Pv, *Rv;
-	int i, j;
-
-	P = M1;
-	R = M2;
-
-	for (i = 0; i < m; i++) // Loop over rows
-	{
-		Pv = *P; 
-		Rv = *R;
-		for (j = 0; j < n; j++) // Loop over columns
-		{
-			*Pv = *Rv;
-			Pv++;
-			Rv++;
-		}
-		P++;
-		R++;
-	}
-
-	return 1;
-}
-
 int initv(double *U, double *V, int n)
 {
 	double *T, *W;
@@ -166,7 +134,7 @@ int initv(double *U, double *V, int n)
 	T = U;
 	W = V;
 
-	for (i = 0; i < n; i++)
+	for (i = 0; i < n; i++) // Loop over vector elements
 	{
 		*T = *W;
 		T++;
