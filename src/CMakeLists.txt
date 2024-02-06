@@ -5,6 +5,7 @@ enable_language(CXX)
 
 # Generates a `compile_commands.json` that can be used for autocompletion
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD 11)
 
 set(OSBitness 32)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
