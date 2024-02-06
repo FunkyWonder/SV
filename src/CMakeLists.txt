@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.7)
 project(SV-file VERSION 1.0)
 
+enable_language(CXX)
+
 # Generates a `compile_commands.json` that can be used for autocompletion
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
