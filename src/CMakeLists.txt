@@ -19,11 +19,6 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${FullOutputDir}")
 add_executable(SV-file main.c)
 target_link_libraries(SV-file m)
 
-target_include_directories(SV-file PRIVATE "../include/")
-set(SOURCES "../include/helper_functions.h" "../include/helper_cuda.h")
-
-target_link_libraries(SV-file ${SOURCES})
-
 include(CheckLanguage)
 check_language(CUDA)
 if (CMAKE_CUDA_COMPILER)
@@ -31,6 +26,10 @@ if (CMAKE_CUDA_COMPILER)
   find_package(CUDAToolkit)
   target_link_libraries(SV-file CUDA::cudart)
   target_link_libraries(SV-file CUDA::cuda_driver)
+
+  target_include_directories(SV-file PRIVATE "../include/")
+  set(SOURCES "../include/helper_functions.h" "../include/helper_cuda.h")
+  target_link_libraries(SV-file ${SOURCES})
 else()
   message(STATUS "No CUDA compiler found")
 endif()
