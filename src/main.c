@@ -1,8 +1,20 @@
-#include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <math.h>
+#include <time.h>
+
+// System includes
+#include <stdio.h>
+#include <assert.h>
+
+// CUDA runtime
+#include <cuda_runtime.h>
+
+// helper functions and utilities to work with CUDA
+#include <helper_functions.h>
+#include <helper_cuda.h>
+
 // #include <malloc.h>
 
 #define ALF 1.0e-14 /*Ensures sufficient decrease in function value in lnsrch.*/
@@ -47,7 +59,6 @@ int lags, invcont, kbar, l, contS, seed, B;
 double D1p, pd1, logsqrt2pi, lbound, phiconst, sqrt2, csqtr, m0true, gammakbtrue, btrue, sigmadtrue, alphaaux, sqrt2dPi;
 double *muaux, *hsV, *driftmut, *monthmut, *shortmut, *ma50t, *ma250t;
 double **Weightmatrix;
-
 double *alocvec(int n)
 {
 	/**
@@ -252,6 +263,11 @@ double **nlminLvectSimplex(double (*func)(double *, double *, double *, double *
 						   double *x0, int n, double *lambda, double *yaux, double *epsin, double **At, double **yni, double epsilon, int dim)
 {
 
+	clock_t time;
+	double cpu_time_used;
+
+	time = clock();
+
 	double **Pf;
 
 	double *G, *z, *Ptry, *Ptry2, *w, *vec;
@@ -377,6 +393,10 @@ double **nlminLvectSimplex(double (*func)(double *, double *, double *, double *
 	free(Ptry2);
 	free(w);
 	free(vec);
+
+	time = clock() - time;
+	cpu_time_used = ((double)time)/CLOCKS_PER_SEC; // in seconds
+	printf("nlminvectlsimplex took %f seconds to execute \n", cpu_time_used);
 
 	return Pf;
 }
@@ -611,6 +631,11 @@ double PF(double *x, double *rt, double *pt, double **z2, double **z3)
 	double **hs, **hss;
 	int *sigmacount;
 
+	clock_t time;
+	double cpu_time_used;
+
+	time = clock();
+
 	jz, jsr = 123456789;
 	// printf("Value of jz is: %i\n", jz);
 	// printf("Value of jsr is: %i\n", jsr);
@@ -744,11 +769,29 @@ double PF(double *x, double *rt, double *pt, double **z2, double **z3)
 	free(sigmacount);
 	free(piMalik);
 
+	time = clock() - time;
+	cpu_time_used = ((double)time) / CLOCKS_PER_SEC; // in seconds
+	printf("PF took %f seconds to execute \n", cpu_time_used);
+
 	return -Like;
 }
 
 int main(void)
 {
+	int devID;
+	cudaDeviceProp props;
+
+	// This will pick the best possible CUDA capable device
+	devID = findCudaDevice(argc, (const char **)argv);
+
+	// Get GPU information
+	checkCudaErrors(cudaGetDevice(&devID));
+	checkCudaErrors(cudaGetDeviceProperties(&props, devID));
+	printf("Device %d: \"%s\" with Compute %d.%d capability\n", devID, props.name,
+		   props.major, props.minor);
+
+	printf("printf() is called. Output:\n\n");
+
 	int i, j, j1, k, n, t, cont, jcont, trials, itno;
 	double ftry, ftry1, ftry2, tol, a, sigmad0, val, eps1, sig, minval;
 	double *pt, *mus, *muss, *tetaCons, *lambda;
