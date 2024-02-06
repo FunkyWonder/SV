@@ -18,3 +18,6 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${FullOutputDir}")
 
 add_executable(SV-file main.c)
 target_link_libraries(SV-file m)
+find_package(CUDAToolkit)
+target_link_libraries(SV-file CUDA::cudart)
+target_link_libraries(SV-file CUDA::cufft)
