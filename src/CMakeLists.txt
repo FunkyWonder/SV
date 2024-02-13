@@ -18,18 +18,19 @@ set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${FullOutputDir}")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${FullOutputDir}")
 
 include(CTest)
-add_library(SV-library STATIC
-  main.h
-)
+# add_library(SV-library STATIC
+#   main.h
+# )
 
-target_compile_features(SV-library PUBLIC cxx_std_11)
+# target_compile_features(SV-library PUBLIC cxx_std_11)
 
-set_target_properties( SV-library
-  PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+# set_target_properties( SV-library
+  # PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 add_executable(SV-file main.cu)
 set_property(TARGET SV-file
   PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+
 target_link_libraries(SV-file PRIVATE SV-library)
 
 if(APPLE)
