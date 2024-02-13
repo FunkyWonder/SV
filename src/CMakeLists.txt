@@ -19,7 +19,6 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${FullOutputDir}")
 
 include(CTest)
 add_library(SV-library STATIC
-  m
   main.h
 )
 
