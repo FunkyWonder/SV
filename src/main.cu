@@ -9,11 +9,14 @@
 #include <assert.h>
 
 // CUDA runtime
+#include <cuda.h>
 #include <cuda_runtime.h>
 
-// helper functions and utilities to work with CUDA
-#include <helper_functions.h>
 #include <helper_cuda.h>
+
+// // helper functions and utilities to work with CUDA
+// #include <helper_functions.h>
+// #include <helper_cuda.h>
 
 // #include <malloc.h>
 
@@ -75,6 +78,46 @@ double *alocvec(int n)
 	}
 
 	return z;
+}
+
+inline int findCudaDevice(int argc, const char **argv)
+{
+	int devID = 0;
+
+	// If the command-line has a device number specified, use it
+	if (checkCmdLineFlag(argc, argv, "device"))
+	{
+		devID = getCmdLineArgumentInt(argc, argv, "device=");
+
+		if (devID < 0)
+		{
+			printf("Invalid command line parameter\n ");
+			exit(EXIT_FAILURE);
+		}
+		else
+		{
+			devID = gpuDeviceInit(devID);
+
+			if (devID < 0)
+			{
+				printf("exiting...\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+	}
+	else
+	{
+		// Otherwise pick the device with highest Gflops/s
+		devID = gpuGetMaxGflopsDeviceId();
+		checkCudaErrors(cudaSetDevice(devID));
+		int major = 0, minor = 0;
+		checkCudaErrors(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, devID));
+		checkCudaErrors(cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, devID));
+		printf("GPU Device %d: \"%s\" with compute capability %d.%d\n\n",
+			   devID, _ConvertSMVer2ArchName(major, minor), major, minor);
+	}
+
+	return devID;
 }
 
 double **alocmat(int m, int n)
@@ -781,12 +824,15 @@ int main(void)
 	int devID;
 	cudaDeviceProp props;
 
-	// This will pick the best possible CUDA capable device
-	devID = findCudaDevice(argc, (const char **)argv);
+	// // This will pick the best possible CUDA capable device
+	devID = findCudaDevice(argc, 0);
+
+	cudaGetDevice(&devID);
+	cudaGetDeviceProperties(&props, devID);
 
 	// Get GPU information
-	checkCudaErrors(cudaGetDevice(&devID));
-	checkCudaErrors(cudaGetDeviceProperties(&props, devID));
+	// checkCudaErrors(cudaGetDevice(&devID));
+	// checkCudaErrors(cudaGetDeviceProperties(&props, devID));
 	printf("Device %d: \"%s\" with Compute %d.%d capability\n", devID, props.name,
 		   props.major, props.minor);
 

@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.7)
 project(SV-file VERSION 1.0)
 
-enable_language(CXX)
-
+enable_language(CXX CUDA)
+ 
 # Generates a `compile_commands.json` that can be used for autocompletion
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 11)
@@ -17,7 +17,7 @@ set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${FullOutputDir}/static libs")
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${FullOutputDir}")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${FullOutputDir}")
 
-add_executable(SV-file main.c)
+add_executable(SV-file main.cu)
 target_link_libraries(SV-file m)
 
 include(CheckLanguage)
@@ -29,7 +29,7 @@ if (CMAKE_CUDA_COMPILER)
   target_link_libraries(SV-file CUDA::cuda_driver)
 
   target_include_directories(SV-file PRIVATE "../include/")
-  set(SOURCES "../include/helper_functions.h" "../include/helper_cuda.h")
+  set(SOURCES "../include/helper_cuda.h")
   target_link_libraries(SV-file ${SOURCES})
 else()
   message(STATUS "No CUDA compiler found")
