@@ -1,1 +1,5 @@
 - dynamic parallelism (were using it)
+- cuda is a pain to get working
+
+
+https://stackoverflow.com/questions/67966258/cuda-architectures-is-empty-for-target-cmtc-28d80
