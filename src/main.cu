@@ -12,8 +12,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-#include <helper_cuda.h>
-
+#include "../include/helper_cuda.h"
 // // helper functions and utilities to work with CUDA
 // #include <helper_functions.h>
 // #include <helper_cuda.h>
@@ -67,7 +66,7 @@ double *alocvec(int n)
 	/**
 	 * @param n number of elements to allocate
 	 * @return pointer to allocated array of n elements
-	*/
+	 */
 	double *z;
 
 	z = (double *)malloc(sizeof(double) * n);
@@ -80,53 +79,13 @@ double *alocvec(int n)
 	return z;
 }
 
-inline int findCudaDevice(int argc, const char **argv)
-{
-	int devID = 0;
-
-	// If the command-line has a device number specified, use it
-	if (checkCmdLineFlag(argc, argv, "device"))
-	{
-		devID = getCmdLineArgumentInt(argc, argv, "device=");
-
-		if (devID < 0)
-		{
-			printf("Invalid command line parameter\n ");
-			exit(EXIT_FAILURE);
-		}
-		else
-		{
-			devID = gpuDeviceInit(devID);
-
-			if (devID < 0)
-			{
-				printf("exiting...\n");
-				exit(EXIT_FAILURE);
-			}
-		}
-	}
-	else
-	{
-		// Otherwise pick the device with highest Gflops/s
-		devID = gpuGetMaxGflopsDeviceId();
-		checkCudaErrors(cudaSetDevice(devID));
-		int major = 0, minor = 0;
-		checkCudaErrors(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, devID));
-		checkCudaErrors(cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, devID));
-		printf("GPU Device %d: \"%s\" with compute capability %d.%d\n\n",
-			   devID, _ConvertSMVer2ArchName(major, minor), major, minor);
-	}
-
-	return devID;
-}
-
 double **alocmat(int m, int n)
 {
 	/**
 	 * @param m number of rows in the matrix
 	 * @param n number of columns in the matrix
 	 * @return pointer to allocated array of m elements
-	*/
+	 */
 	double **z;
 	int i;
 
@@ -154,7 +113,7 @@ int freemat(double **P, int m)
 	 * @param P a pointer to a matrix of pointers to doubles
 	 * @param m the number of rows in the matrix
 	 * @return 1 if successful, 0 otherwise
-	*/
+	 */
 	int i;
 
 	for (i = 0; i < m; i++)
@@ -206,7 +165,7 @@ int prodcv(double *y1, double c, int n, double *res)
 	 *@param n the length of the vector
 	 *@param res the result vector
 	 *@return 1 if success, 0 if failed
-	*/
+	 */
 	int i;
 	double *y, *z;
 
@@ -438,7 +397,7 @@ double **nlminLvectSimplex(double (*func)(double *, double *, double *, double *
 	free(vec);
 
 	time = clock() - time;
-	cpu_time_used = ((double)time)/CLOCKS_PER_SEC; // in seconds
+	cpu_time_used = ((double)time) / CLOCKS_PER_SEC; // in seconds
 	printf("nlminvectlsimplex took %f seconds to execute \n", cpu_time_used);
 
 	return Pf;
@@ -539,12 +498,12 @@ float efix(void)
 void zigset_nor(uint32 jsrseed)
 {
 	/**
-	 * Set up tables for RNOR 
-	 * @param jsrseed: 
+	 * Set up tables for RNOR
+	 * @param jsrseed:
 	 * @return none
-	*/
-	const double m1 = 2147483648.0; 
-	double dn = 3.442619855899, tn = dn, vn = 9.91256303526217e-3, q; 
+	 */
+	const double m1 = 2147483648.0;
+	double dn = 3.442619855899, tn = dn, vn = 9.91256303526217e-3, q;
 	int i;
 
 	jsr ^= jsrseed;
@@ -603,9 +562,9 @@ void zigset_exp(uint32 jsrseed)
 void zigset(uint32 jsrseed)
 {
 	/**
-	* Set up tables 
-	*@param jsrseed: random number generator seed
-	*/
+	 * Set up tables
+	 *@param jsrseed: random number generator seed
+	 */
 	zigset_nor(jsrseed);
 	zigset_exp(jsrseed);
 }
@@ -721,13 +680,13 @@ double PF(double *x, double *rt, double *pt, double **z2, double **z3)
 
 			/******** Step 1 *******************/
 
-	hsV[cont] = hs[cont][1] = mu + phi * hs[cont][1] + sigma * rnor();
+			hsV[cont] = hs[cont][1] = mu + phi * hs[cont][1] + sigma * rnor();
 
-	sigmaxt = exp(hs[cont][1] / 2);
+			sigmaxt = exp(hs[cont][1] / 2);
 
-	driftmu = mud;
+			driftmu = mud;
 
-	Probi[cont] = pdf_norm(rt[t], driftmu, sigmaxt);
+			Probi[cont] = pdf_norm(rt[t], driftmu, sigmaxt);
 		}
 
 		val = 0.0;
@@ -824,6 +783,7 @@ int main(void)
 	int devID;
 	cudaDeviceProp props;
 
+	int argc = 0;
 	// // This will pick the best possible CUDA capable device
 	devID = findCudaDevice(argc, 0);
 
@@ -843,20 +803,20 @@ int main(void)
 	double *pt, *mus, *muss, *tetaCons, *lambda;
 	double **Pf, **test, **StdAux, **tetainit, **rts;
 
-	n = 250; 
+	n = 250;
 
 	FILE *fp; // File pointer
-	char s[30], outputFile[100]; 
+	char s[30], outputFile[100];
 
-	l = 24050; // Length of the input file
-	lags = 250; // Number of lags 
+	l = 24050;	// Length of the input file
+	lags = 250; // Number of lags
 
-	B = 1000; // Number of points in the time series
+	B = 1000;	 // Number of points in the time series
 	trials = 20; // Number of trials
-	itno = 1; // Number of iterations
+	itno = 1;	 // Number of iterations
 
-	sqrt2dPi = sqrt(2.0 / miPi); 
-	csqtr = sqrt(ctrunc); 
+	sqrt2dPi = sqrt(2.0 / miPi);
+	csqtr = sqrt(ctrunc);
 	sqrt2 = sqrt(2.0);
 	pd1 = exp(-ctrunc / 2) / sqrt(2 * miPi);
 	D1p = pow(fabs(-csqtr), ctrunc) * pd1;
@@ -866,20 +826,20 @@ int main(void)
 
 	/*printf("phi=%.12f\n",phiconst);*/
 
-	muaux = alocvec(pdim); // Vector for storing the auxiliary variables.
-	tetaCons = alocvec(pdim); // Vector for storing the constraint variables.
+	muaux = alocvec(pdim);					   // Vector for storing the auxiliary variables.
+	tetaCons = alocvec(pdim);				   // Vector for storing the constraint variables.
 	tetainit = alocmat((itno * trials), pdim); // Matrix for storing the initial constraint variables.
-	rts = alocmat(itno, l); // Matrix for storing the time series. 1 by 24050
-	pt = alocvec(l); // Vector for storing the time series.
-	hsV = alocvec(B); // Vector for storing the Hessian values.
-	lambda = alocvec(pdim); // Vector for storing the lambda values.
-	mus = alocvec(B); 
-	muss = alocvec(B); 
+	rts = alocmat(itno, l);					   // Matrix for storing the time series. 1 by 24050
+	pt = alocvec(l);						   // Vector for storing the time series.
+	hsV = alocvec(B);						   // Vector for storing the Hessian values.
+	lambda = alocvec(pdim);					   // Vector for storing the lambda values.
+	mus = alocvec(B);
+	muss = alocvec(B);
 	monthmut = alocvec(l); // Vector for storing the monthly mutation rates.
 	shortmut = alocvec(l); // Vector for storing the short-term mutation rates.
 	driftmut = alocvec(l); // Vector for storing the drift mutation rates.
-	ma50t = alocvec(l);	 // Vector for storing the moving average over 50 days.
-	ma250t = alocvec(l); // Vector for storing the moving average over 250 days.
+	ma50t = alocvec(l);	   // Vector for storing the moving average over 50 days.
+	ma250t = alocvec(l);   // Vector for storing the moving average over 250 days.
 
 	muaux[0] = -0.190749834;
 	muaux[1] = 0.977385697;
@@ -888,26 +848,26 @@ int main(void)
 
 	seed = 1;
 
-	zigset(seed); 
-	srand(seed); 
+	zigset(seed);
+	srand(seed);
 
 	for (i = 0; i < (itno * trials); i++) // Loops over the trials times itno.
 	{
 		for (j = 0; j < pdim; j++) // pdim=4, trials=20, and itno=1
 			// For each trial, fill a vector with "muaux[j] * (0.99 + 0.02 * uni())" (uses ziggurat)
-			tetainit[i][j] = muaux[j] * (0.99 + 0.02 * uni()); 
+			tetainit[i][j] = muaux[j] * (0.99 + 0.02 * uni());
 	}
 
-	fp = fopen("GSPC19280104-20230929.txt", "r"); 
+	fp = fopen("GSPC19280104-20230929.txt", "r");
 
 	j = 0;
 
 	// Stores GSPC19280104-20230929.txt data in rts.
 	while (fgets(s, 30, fp) != NULL) // Reads the data from the file line by line. Stops when the end of the file is reached.
 	{
-		if (j >= 0) // This is not needed.
+		if (j >= 0)				 // This is not needed.
 			rts[0][j] = atof(s); // Fill the first column of rts with the data of the line converted to float.
-		j++; // Increments the rows counter.
+		j++;					 // Increments the rows counter.
 	}
 	fclose(fp);
 
@@ -928,7 +888,7 @@ int main(void)
 
 	for (jcont = 0; jcont < trials; jcont++)
 	{
-		test = nlminLvectSimplex((*PF), tetainit[jcont], 2000, lambda, rts[0], pt, Weightmatrix, Weightmatrix, EPS1, pdim); 
+		test = nlminLvectSimplex((*PF), tetainit[jcont], 2000, lambda, rts[0], pt, Weightmatrix, Weightmatrix, EPS1, pdim);
 		test[0][2] = fabs(test[0][2]);
 
 		if (test[0][pdim] < minval)
@@ -940,9 +900,9 @@ int main(void)
 
 		// This part of the code writes the results to a file.
 		fp = fopen(outputFile, "a");
-		for (i = 0; i < pdim; i++) 
+		for (i = 0; i < pdim; i++)
 			fprintf(fp, "%.12f	", test[0][i]); // Format the results to a fixed precision.
-		fprintf(fp, "%.16f\n", test[0][pdim]); 
+		fprintf(fp, "%.16f\n", test[0][pdim]);
 		fclose(fp);
 
 		/*	printf("jcont=%d\n",jcont);
