@@ -795,8 +795,7 @@ int main(void)
 	// checkCudaErrors(cudaGetDeviceProperties(&props, devID));
 	printf("Device %d: \"%s\" with Compute %d.%d capability\n", devID, props.name,
 		   props.major, props.minor);
-
-	printf("printf() is called. Output:\n\n");
+	FILE *fp; // File pointer
 
 	int i, j, j1, k, n, t, cont, jcont, trials, itno;
 	double ftry, ftry1, ftry2, tol, a, sigmad0, val, eps1, sig, minval;
@@ -805,7 +804,6 @@ int main(void)
 
 	n = 250;
 
-	FILE *fp; // File pointer
 	char s[30], outputFile[100];
 
 	l = 24050;	// Length of the input file
@@ -858,7 +856,13 @@ int main(void)
 			tetainit[i][j] = muaux[j] * (0.99 + 0.02 * uni());
 	}
 
-	fp = fopen("GSPC19280104-20230929.txt", "r");
+	char* filename = "GSPC19280104-20230929.txt";
+	fp = fopen(filename, "r");
+
+	if (fp == NULL) {
+		perror("Failed");
+		return 1;
+	}
 
 	j = 0;
 
@@ -887,6 +891,8 @@ int main(void)
 		tetaCons[i] = tetainit[0][i]; // tetaCons is een vector van 4, tetainit is een matrix van 4x20
 
 	for (jcont = 0; jcont < trials; jcont++)
+		FILE *fp; // File pointer
+
 	{
 		test = nlminLvectSimplex((*PF), tetainit[jcont], 2000, lambda, rts[0], pt, Weightmatrix, Weightmatrix, EPS1, pdim);
 		test[0][2] = fabs(test[0][2]);
