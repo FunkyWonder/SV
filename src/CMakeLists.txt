@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.8)
 cmake_policy(SET CMP0104 NEW)
 project(SV-file VERSION 1.0)
 
+set(CMAKE_BUILD_TYPE Debug)
+
 enable_language(C CUDA) ## Was C CUDA
  
 # Generates a `compile_commands.json` that can be used for autocompletion
