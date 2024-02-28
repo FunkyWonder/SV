@@ -3,7 +3,9 @@ SV
 
 - dynamic parallelism (were using it)
 - cuda is a pain to get working
+- Why was PF a function pointer? Pointless, causes segfault when rewritten to cuda.
 
+What is the range of rnor? 
 
 https://stackoverflow.com/questions/67966258/cuda-architectures-is-empty-for-target-cmtc-28d80
 
