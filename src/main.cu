@@ -1,10 +1,10 @@
-//#include <unistd.h>
+// #include <unistd.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <time.h>
-#include<algorithm>
+#include <algorithm>
 
 // System includes
 #include <stdio.h>
@@ -25,10 +25,10 @@
 #include <device_launch_parameters.h>
 #include <cub/cub.cuh>
 
-//#include "../include/helper_cuda.h"
-// // helper functions and utilities to work with CUDA
-// #include <helper_functions.h>
-// #include <helper_cuda.h>
+// #include "../include/helper_cuda.h"
+//  // helper functions and utilities to work with CUDA
+//  #include <helper_functions.h>
+//  #include <helper_cuda.h>
 
 // #include <malloc.h>
 
@@ -65,7 +65,7 @@ const double miPi = 3.141592653589793238462643;
 const double ctrunceva = 1.0;
 const double ctrunc = 3.5;
 const int B = 1000;
-//const int l = 24050;
+// const int l = 24050;
 const int l = 100;
 
 typedef unsigned int uint32;
@@ -75,17 +75,15 @@ static uint32 jz, jsr = 123456789;
 
 int lags, invcont, kbar, contS, seed;
 double D1p, pd1, logsqrt2pi, lbound, phiconst, csqtr, m0true, gammakbtrue, btrue, sigmadtrue, alphaaux, sqrt2dPi;
-double * driftmut, * monthmut, * shortmut, * ma50t, * ma250t;
-double** Weightmatrix;
+double *driftmut, *monthmut, *shortmut, *ma50t, *ma250t;
+double **Weightmatrix;
 
 static int32 hz;
 static uint32 iz, kn[128], ke[256];
 static float wn[128], fn[128], we[256], fe[256];
 
-
 /********* Pdf of univariate normal *************/
-__host__ __device__
-double pdf_norm(double x, double mu, double sigma)
+__host__ __device__ double pdf_norm(double x, double mu, double sigma)
 {
 	double val;
 
@@ -99,8 +97,7 @@ double pdf_norm(double x, double mu, double sigma)
 		return 0.0;
 }
 
-__host__ __device__
-double PhiErf(double x)
+__host__ __device__ double PhiErf(double x)
 {
 	double y;
 
@@ -108,8 +105,7 @@ double PhiErf(double x)
 
 	return y;
 }
-__host__ __device__
-double FqCauchy(double x)
+__host__ __device__ double FqCauchy(double x)
 {
 	double val;
 
@@ -119,8 +115,7 @@ double FqCauchy(double x)
 }
 
 #define A 12
-__host__ __device__
-int compare(int a, int b, double* hsV)
+__host__ __device__ int compare(int a, int b, double *hsV)
 {
 	if (hsV[a] > hsV[b])
 		return 1;
@@ -130,95 +125,94 @@ int compare(int a, int b, double* hsV)
 		return 0;
 }
 
-struct DMatrix {
-	double* ptr;
+struct DMatrix
+{
+	double *ptr;
 	int w;
 	int h;
 
-	__device__ __host__
-	double* cell(int x, int y) {
+	__device__ __host__ double *cell(int x, int y)
+	{
 		return &ptr[y * this->w + x];
 	}
 
-	__device__ __host__
-	double* row(int y) {
+	__device__ __host__ double *row(int y)
+	{
 		return this->ptr + (this->w * y);
 	}
 
-	__device__ __host__
-	void free() {
+	__device__ __host__ void free()
+	{
 		cudaFree(this->ptr);
 	}
-
 };
 
-struct FMatrix {
-	float* ptr;
+struct FMatrix
+{
+	float *ptr;
 	int w;
 	int h;
 
-	float* cell(int x, int y) {
+	float *cell(int x, int y)
+	{
 		return &ptr[y * this->w + x];
 	}
 
-	void free() {
+	void free()
+	{
 		cudaFree(this->ptr);
 	}
-
 };
 
-__host__ __device__
-double* allocvec(int n)
+__host__ __device__ double *allocvec(int n)
 {
 	/**
 	 * @param n number of elements to allocate
 	 * @return pointer to allocated array of n elements
 	 */
-	double* z;
+	double *z;
 
-	cudaMalloc((void**) &z, sizeof(double) * n);
+	cudaMalloc((void **)&z, sizeof(double) * n);
 
 	return z;
 }
 
 __device__ __host__
-DMatrix allocmat(int m, int n)
+	DMatrix
+	allocmat(int m, int n)
 {
 	/**
 	 * @param m number of rows in the matrix
 	 * @param n number of columns in the matrix
 	 * @return pointer to allocated array of m elements
 	 */
-	double* z;
+	double *z;
 
-	cudaMalloc(&z, sizeof(double*) * m * n);
+	cudaMalloc(&z, sizeof(double *) * m * n);
 
 	return {
 		z,
 		m,
-		n
-	};
+		n};
 }
 
-__device__ __host__
-int* alocintvec(int n)
+__device__ __host__ int *alocintvec(int n)
 {
 	/**
 	 * @param n the number of elements in the vector
 	 * @return a pointer to a vector of integers
 	 */
-	int* z;
+	int *z;
 	cudaMalloc(&z, sizeof(int) * n);
 
 	return z;
 }
 
-__device__
-int initv(double* U, double* V, int n)
+__device__ int initv(double *U, double *V, int n)
 {
-	double* T, * W;
+	double *T, *W;
 	int i;
-	
+
 	T = U;
 	W = V;
 
@@ -232,8 +226,7 @@ int initv(double* U, double* V, int n)
 	return 1;
 }
 
-__device__
-int prodcv(double* y1, double c, int n, double* res)
+__device__ int prodcv(double *y1, double c, int n, double *res)
 {
 	/**
 	 *@param y1 the vector of values
@@ -243,7 +236,7 @@ int prodcv(double* y1, double c, int n, double* res)
 	 *@return 1 if success, 0 if failed
 	 */
 	int i;
-	double* y, * z;
+	double *y, *z;
 
 	y = y1;
 	z = res;
@@ -258,11 +251,10 @@ int prodcv(double* y1, double c, int n, double* res)
 	return 1;
 }
 
-__device__
-int sumvect(double* y1, double* y2, int n, double* res)
+__device__ int sumvect(double *y1, double *y2, int n, double *res)
 {
 	int i;
-	double* y, * w, * z;
+	double *y, *w, *z;
 
 	z = res;
 	y = y1;
@@ -280,13 +272,14 @@ int sumvect(double* y1, double* y2, int n, double* res)
 }
 
 __device__
-DMatrix sortm(DMatrix P, int ds)
+	DMatrix
+	sortm(DMatrix P, int ds)
 {
 	printf("sortm start");
 
 	int threadIndex = threadIdx.x + (blockDim.x + threadIdx.y);
 
-	double* z;
+	double *z;
 	double Min, Max, Max2;
 	int i, imin, imax, imax2;
 
@@ -344,17 +337,16 @@ DMatrix sortm(DMatrix P, int ds)
 	return P;
 }
 
-__device__
-double PF(double* x, double* rt, double* pt, double** z2, double** z3, curandState* randState, double* hsV)
+__device__ double PF(double *x, double *rt, double *pt, double **z2, double **z3, curandState *randState, double *hsV)
 {
 	clock_t time = clock();
 
 	int jz, jsr = 123456789;
 
 	DMatrix hs = allocmat(B, 2);
-	double* Probi = allocvec(B);
-	double* piMalik = allocvec(B + 1);
-	int* sigmacount = alocintvec(B);
+	double *Probi = allocvec(B);
+	double *piMalik = allocvec(B + 1);
+	int *sigmacount = alocintvec(B);
 
 	const double mu = x[0];
 	const double phi = x[1];
@@ -365,11 +357,11 @@ double PF(double* x, double* rt, double* pt, double** z2, double** z3, curandSta
 	double sigma2 = sigma * sigma;
 
 	for (int cont = 0; cont < B; cont++)
-		//TODO: Was rnor between 0.0-1.0 like curand_uniform?
+		// TODO: Was rnor between 0.0-1.0 like curand_uniform?
 		//*hs.cell(cont, 1) = mu / (1.0 - phi) + sqrt(sigma2 / (1.0 - phi2)) * curand_uniform(randState);
 		*hs.cell(cont, 1) = mu / (1.0 - phi) + sqrt(sigma2 / (1.0 - phi2)) * curand_uniform(randState);
 
-	//hs[cont][1] = mu / (1.0 - phi) + sqrt(sigma2 / (1.0 - phi2)) * rnor();
+	// hs[cont][1] = mu / (1.0 - phi) + sqrt(sigma2 / (1.0 - phi2)) * rnor();
 
 	double Like = 0.0;
 
@@ -392,7 +384,7 @@ double PF(double* x, double* rt, double* pt, double** z2, double** z3, curandSta
 			double index = mu + phi * (*hs.cell(cont, 1)) + sigma * curand_uniform(randState);
 			hsV[cont] = index;
 			*hs.cell(cont, 1) = index;
-//			double index = hsV[cont] = *hs.cell(cont, 1) = mu + phi * (*hs.cell(cont, 1)) + sigma * curand_uniform(randState);
+			//			double index = hsV[cont] = *hs.cell(cont, 1) = mu + phi * (*hs.cell(cont, 1)) + sigma * curand_uniform(randState);
 
 			double sigmaxt = exp(*hs.cell(cont, 1) / 2);
 
@@ -405,9 +397,8 @@ double PF(double* x, double* rt, double* pt, double** z2, double** z3, curandSta
 		for (int cont = 0; cont < B; cont++)
 			val += Probi[cont];
 
-		thrust::sort(sigmacount, sigmacount + B, [=](int& x, int& y) {
-			return compare(x, y, hsV) == -1;
-		});
+		thrust::sort(sigmacount, sigmacount + B, [=](int &x, int &y)
+					 { return compare(x, y, hsV) == -1; });
 
 		for (int cont = 0; cont < B; cont++)
 		{
@@ -486,18 +477,16 @@ double PF(double* x, double* rt, double* pt, double** z2, double** z3, curandSta
 	cudaFree(sigmacount);
 	cudaFree(piMalik);
 
-	//time = clock() - time;
-	//double gpu_time_used = ((double)time) / 1000;
-	//printf("PF took %f * 1000 cycles to execute \n", gpu_time_used);
+	// time = clock() - time;
+	// double gpu_time_used = ((double)time) / 1000;
+	// printf("PF took %f * 1000 cycles to execute \n", gpu_time_used);
 	printf("PF completed");
 
 	return -Like;
 }
 
-
-__global__
-void nlminLvectSimplex(
-	DMatrix x0, int n, double* lambda, double* yaux, double* epsin, double** At, double** yni, double epsilon, int dim, curandState* globalRands, double* hsV)
+__global__ void nlminLvectSimplex(
+	DMatrix x0, int n, double *lambda, double *yaux, double *epsin, double **At, double **yni, double epsilon, int dim, curandState *globalRands, double *hsV)
 {
 	int threadIndex = threadIdx.x + (blockDim.x + threadIdx.y);
 
@@ -516,7 +505,7 @@ void nlminLvectSimplex(
 
 	DMatrix Pf;
 
-	double* G, * z, * Ptry, * Ptry2, * w, * vec;
+	double *G, *z, *Ptry, *Ptry2, *w, *vec;
 
 	double ftry, ftry2, tol;
 
@@ -545,7 +534,6 @@ void nlminLvectSimplex(
 		*Pf.cell(i, dim) = PF(Pf.cell(i, 0), yaux, epsin, At, yni, &localState, hsV);
 
 	k = 0;
-
 
 	Pf = sortm(Pf, dim);
 
@@ -654,7 +642,6 @@ void nlminLvectSimplex(
 	printf("nlminvectlsimplex took %f seconds to execute \n", cpu_time_used);
 }
 
-
 int main(void)
 {
 	int devID = 0;
@@ -671,20 +658,20 @@ int main(void)
 	// checkCudaErrors(cudaGetDevice(&devID));
 	// checkCudaErrors(cudaGetDeviceProperties(&props, devID));
 	printf("Device %d: \"%s\" with Compute %d.%d capability\n", devID, props.name,
-		props.major, props.minor);
+		   props.major, props.minor);
 
 	printf("printf() is called. Output:\n\n");
 
 	int i, j, j1, k, n, t, cont, jcont, trials, itno;
 	double ftry, ftry1, ftry2, tol, a, sigmad0, val, eps1, sig, minval;
-	double* pt, * mus, * muss, * tetaCons, * lambda;
-	double** Pf, ** test, ** StdAux;
+	double *pt, *mus, *muss, *tetaCons, *lambda;
+	double **Pf, **test, **StdAux;
 
 	DMatrix rts, tetainit;
 
 	n = 250;
 
-	FILE* fp; // File pointer
+	FILE *fp; // File pointer
 	char s[30], outputFile[100];
 
 	lags = 250; // Number of lags
@@ -702,36 +689,34 @@ int main(void)
 
 	/*printf("phi=%.12f\n",phiconst);*/
 
-	double* muaux = (double*)malloc(pdim * sizeof(double));					   // Vector for storing the auxiliary variables.
-	tetaCons = (double*)malloc(pdim * sizeof(double));				   // Vector for storing the constraint variables.
-	tetainit = allocmat((itno * trials), pdim); // Matrix for storing the initial constraint variables.
+	double *muaux = (double *)malloc(pdim * sizeof(double)); // Vector for storing the auxiliary variables.
+	tetaCons = (double *)malloc(pdim * sizeof(double));		 // Vector for storing the constraint variables.
+	tetainit = allocmat((itno * trials), pdim);				 // Matrix for storing the initial constraint variables.
 
 	DMatrix tetainitHost = {
-		(double*)malloc(itno * trials * pdim * sizeof(double)),
+		(double *)malloc(itno * trials * pdim * sizeof(double)),
 		itno * trials,
-		pdim
-	};
+		pdim};
 
 	DMatrix rtsHost = {
-		(double*)malloc(itno * l * sizeof(double)),
+		(double *)malloc(itno * l * sizeof(double)),
 		itno,
-		l
-	};
+		l};
 
-	rts = allocmat(itno, l);					   // Matrix for storing the time series. 1 by 24050
-	pt = allocvec(l);						   // Vector for storing the time series.
-	double* hsV = allocvec(B);						   // Vector for storing the Hessian values.
-	lambda = allocvec(pdim);					   // Vector for storing the lambda values.
+	rts = allocmat(itno, l);   // Matrix for storing the time series. 1 by 24050
+	pt = allocvec(l);		   // Vector for storing the time series.
+	double *hsV = allocvec(B); // Vector for storing the Hessian values.
+	lambda = allocvec(pdim);   // Vector for storing the lambda values.
 
-	double* lambdaHost = (double*)malloc(pdim * sizeof(double));
+	double *lambdaHost = (double *)malloc(pdim * sizeof(double));
 
 	mus = allocvec(B);
 	muss = allocvec(B);
 	monthmut = allocvec(l); // Vector for storing the monthly mutation rates.
 	shortmut = allocvec(l); // Vector for storing the short-term mutation rates.
 	driftmut = allocvec(l); // Vector for storing the drift mutation rates.
-	ma50t = allocvec(l);	   // Vector for storing the moving average over 50 days.
-	ma250t = allocvec(l);   // Vector for storing the moving average over 250 days.
+	ma50t = allocvec(l);	// Vector for storing the moving average over 50 days.
+	ma250t = allocvec(l);	// Vector for storing the moving average over 250 days.
 
 	muaux[0] = -0.190749834;
 	muaux[1] = 0.977385697;
@@ -740,7 +725,7 @@ int main(void)
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
-	std::uniform_real_distribution<> dis(0, 1);//uniform distribution between 0 and 1
+	std::uniform_real_distribution<> dis(0, 1); // uniform distribution between 0 and 1
 
 	for (i = 0; i < (itno * trials); i++) // Loops over the trials times itno.
 	{
@@ -756,9 +741,9 @@ int main(void)
 	// Stores GSPC19280104-20230929.txt data in rts.
 	while (fgets(s, 30, fp) != NULL) // Reads the data from the file line by line. Stops when the end of the file is reached.
 	{
-		//if (j >= 0)				 // This is not needed.
-			//*rtsHost.cell(0, j) = atof(s); // Fill the first column of rts with the data of the line converted to float.
-		j++;					 // Increments the rows counter.
+		// if (j >= 0)				 // This is not needed.
+		//*rtsHost.cell(0, j) = atof(s); // Fill the first column of rts with the data of the line converted to float.
+		j++; // Increments the rows counter.
 	}
 	fclose(fp);
 
@@ -782,37 +767,36 @@ int main(void)
 
 	cudaMemcpy(tetainit.ptr, tetainitHost.ptr, tetainitHost.w * tetainitHost.h, cudaMemcpyHostToDevice);
 
-	//Main loop
+	// Main loop
 
-	curandState* states;
+	curandState *states;
 	cudaMalloc(&states, sizeof(curandState) * trials);
 
-	//nlminLvectSimplex<<<1, trials >>>(tetainit, 2000, lambda, rts.row(0), pt, Weightmatrix, Weightmatrix, EPS1, pdim, states, hsV);
+	// nlminLvectSimplex<<<1, trials >>>(tetainit, 2000, lambda, rts.row(0), pt, Weightmatrix, Weightmatrix, EPS1, pdim, states, hsV);
 	nlminLvectSimplex<<<10, 100>>>(tetainit, 2000, lambda, rts.row(0), pt, Weightmatrix, Weightmatrix, EPS1, pdim, states, hsV);
 
-	//test[0][2] = fabs(test[0][2]);
+	// test[0][2] = fabs(test[0][2]);
 
-	//if (test[0][pdim] < minval)
+	// if (test[0][pdim] < minval)
 	//{
 	//	for (i = 0; i < pdim; i++)
 	//		tetaCons[i] = test[0][i];
 	//	minval = test[0][pdim];
-	//}
+	// }
 
 	//// This part of the code writes the results to a file.
-	//fp = fopen(outputFile, "a");
-	//for (i = 0; i < pdim; i++)
+	// fp = fopen(outputFile, "a");
+	// for (i = 0; i < pdim; i++)
 	//	fprintf(fp, "%.12f	", test[0][i]); // Format the results to a fixed precision.
-	//fprintf(fp, "%.16f\n", test[0][pdim]);
-	//fclose(fp);
+	// fprintf(fp, "%.16f\n", test[0][pdim]);
+	// fclose(fp);
 
 	///*	printf("jcont=%d\n",jcont);
 	//	writemat("t",pdim+1,pdim+1,test);*/
 
-	//freemat(test, pdim + 1);
+	// freemat(test, pdim + 1);
 
-	//End main loop
-
+	// End main loop
 
 	// This part of the code frees the memory allocated for the matrices and vectors.
 	free(muaux);
