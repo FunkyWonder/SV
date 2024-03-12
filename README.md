@@ -10,8 +10,17 @@ What is the range of rnor?
 https://stackoverflow.com/questions/67966258/cuda-architectures-is-empty-for-target-cmtc-28d80
 
 Generate build files:
-
-cmake -S/home/arnec/Documents/GitHub/SV/src -B/home/arnec/Documents/GitHub/SV/build -GNinja
-
+```bash
+cmake -Ssrc -Bbuild -GNinja
+```
 Compile:
+```bash
 ninja
+```
+
+
+
+also works:
+nvcc -c ./src/main.cu -o ./test/SV-file.o --gpu-architecture=compute_86 --gpu-code=compute_86 -g -G -rdc=true --diag-suppress=177,550
+
+nvcc ./test/SV-file.o -o ./test/SV-file -lcudadevrt -lcudart  --gpu-architecture=sm_86 
