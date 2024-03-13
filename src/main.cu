@@ -38,7 +38,7 @@
 
 
 __global__ void nlminLvectSimplex(
-	DMatrix x0, int n, double *lambda, double *yaux, double *epsin, double epsilon, int dim, curandState *globalRands, double *hsV)
+	DMatrix x0, int n, fpxx *lambda, fpxx *yaux, fpxx *epsin, fpxx epsilon, int dim, curandState *globalRands, fpxx *hsV)
 {
 	int threadIndex = threadIdx.x + (blockDim.x + threadIdx.y);
 	curand_init(0, threadIndex, 0, &globalRands[threadIndex]);
@@ -47,9 +47,9 @@ __global__ void nlminLvectSimplex(
 
 	DMatrix Pf;
 
-	double *G, *z, *Ptry, *Ptry2, *w, *vec;
+	fpxx *G, *z, *Ptry, *Ptry2, *w, *vec;
 
-	double ftry, ftry2, tol;
+	fpxx ftry, ftry2, tol;
 
 	int i, j, j1, k;
 
@@ -190,9 +190,9 @@ int main(void)
 
 
 	int i, j, j1, k, n, t, cont, jcont, trials, itno;
-	double ftry, ftry1, ftry2, tol, a, sigmad0, val, eps1, sig, minval;
-	double *tetaCons;
-	double **Pf, **test, **StdAux;
+	fpxx ftry, ftry1, ftry2, tol, a, sigmad0, val, eps1, sig, minval;
+	fpxx *tetaCons;
+	fpxx **Pf, **test, **StdAux;
 
 	DMatrix rts, tetainit;
 
@@ -204,26 +204,26 @@ int main(void)
 	trials = 1; // Number of trials
 	itno = 1;	 // Number of iterations
 
-	double *muaux = (double *)malloc(pdim * sizeof(double)); // Vector for storing the auxiliary variables.
-	tetaCons = (double *)malloc(pdim * sizeof(double));		 // Vector for storing the constraint variables.
+	fpxx *muaux = (fpxx *)malloc(pdim * sizeof(fpxx)); // Vector for storing the auxiliary variables.
+	tetaCons = (fpxx *)malloc(pdim * sizeof(fpxx));		 // Vector for storing the constraint variables.
 	tetainit = allocmat((itno * trials), pdim);				 // Matrix for storing the initial constraint variables.
 
 	DMatrix tetainitHost = {
-		(double *)malloc(itno * trials * pdim * sizeof(double)),
+		(fpxx *)malloc(itno * trials * pdim * sizeof(fpxx)),
 		itno * trials,
 		pdim
 	};
 	
 	DMatrix rtsHost = {
-		(double *)malloc(itno * l * sizeof(double)),
+		(fpxx *)malloc(itno * l * sizeof(fpxx)),
 		itno,
 		l
 	};
 
 	rts = allocmat(itno, l);   // Matrix for storing the time series. 1 by 24050
-	thrust::device_vector<double> pt(l); // Vector for storing the time series.
+	thrust::device_vector<fpxx> pt(l); // Vector for storing the time series.
 
-	thrust::device_vector<double> hsV(B);
+	thrust::device_vector<fpxx> hsV(B);
 
 	muaux[0] = -0.190749834;
 	muaux[1] = 0.977385697;
@@ -277,7 +277,7 @@ int main(void)
 
 	// cudaMemcpy(lambda, lambdaHost, pdim, cudaMemcpyHostToDevice);
 
-	thrust::device_vector<double> lambdaDevice(pdim);
+	thrust::device_vector<fpxx> lambdaDevice(pdim);
 	lambdaDevice[0] = -0.5;
 	lambdaDevice[1] = -0.02;
 	lambdaDevice[2] = 0.2;
@@ -288,12 +288,12 @@ int main(void)
 		tetaCons[i] = *tetainitHost.cell(0, i); // tetaCons is een vector van 4, tetainit is een matrix van 4x20
 	}
 
-	cudaMemcpy(tetainit.ptr, tetainitHost.ptr, tetainitHost.w * tetainitHost.h * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(tetainit.ptr, tetainitHost.ptr, tetainitHost.w * tetainitHost.h * sizeof(fpxx), cudaMemcpyHostToDevice);
 
-	double* rtsRow0Device;
-	cudaMalloc(&rtsRow0Device, sizeof(double) * rts.w);
+	fpxx* rtsRow0Device;
+	cudaMalloc(&rtsRow0Device, sizeof(fpxx) * rts.w);
 
-	cudaMemcpy(rtsRow0Device, rts.row(0), rts.w * sizeof(double), cudaMemcpyHostToDevice);
+	cudaMemcpy(rtsRow0Device, rts.row(0), rts.w * sizeof(fpxx), cudaMemcpyHostToDevice);
 
 	// Main loop
 

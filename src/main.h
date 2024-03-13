@@ -27,12 +27,15 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <cub/cub.cuh>
+#include <cuda_fp16.h>
 
 #define EPS 1.0e-12
 #define EPS1 1.0e-6
 #define CON 1.4 /*Stepsize is decreased by CON at each iteration.*/
 #define BIG 1.0e30
 #define pdim 4
+
+#define fpxx half
 
 const int B = 1000;
 const int l = 24050;// 24050
@@ -41,15 +44,15 @@ typedef unsigned int uint32;
 typedef signed int int32;
 
 /********* Pdf of univariate normal *************/
-__device__ __host__ double pdf_norm(double x, double mu, double sigma)
+__device__ __host__ double pdf_norm(fpxx x, fpxx mu, fpxx sigma)
 {
-	double val;
+	fpxx val;
 
 	val = (x - mu) / sigma;
 	val = -pow(val, 2.0) / 2;
 	val = exp(val) / (sqrt(2 * M_PI) * sigma);
 
-	if (fabs(val) > 0.0)
+	if (__habs(val) > 0.0)
 		return val;
 	else
 		return 0.0;
@@ -72,7 +75,7 @@ __device__ __host__ double pdf_norm(double x, double mu, double sigma)
 // 	return val;
 // }
 
-__device__ __host__ int compare(int a, int b, double *hsV)
+__device__ __host__ int compare(int a, int b, fpxx *hsV)
 {
 	if (hsV[a] > hsV[b])
 		return 1;
@@ -84,16 +87,16 @@ __device__ __host__ int compare(int a, int b, double *hsV)
 
 struct DMatrix
 {
-	double *ptr;
+	fpxx *ptr;
 	int w;
 	int h;
 
-	__device__ __host__ double *cell(int x, int y)
+	__device__ __host__ fpxx *cell(int x, int y)
 	{
 		return &this->ptr[(this->w * y) + x];
 	}
 
-	__device__ __host__ double *row(int y)
+	__device__ __host__ fpxx *row(int y)
 	{
 		return &this->ptr[this->w * y];
 	}
@@ -105,15 +108,15 @@ struct DMatrix
 };
 
 
-__host__ __device__ double *allocvec(int n)
+__host__ __device__ fpxx *allocvec(int n)
 {
 	/**
 	 * @param n number of elements to allocate
 	 * @return pointer to allocated array of n elements
 	 */
-	double *z;
+	fpxx *z;
 
-	cudaMalloc((void **)&z, sizeof(double) * n);
+	cudaMalloc((void **)&z, sizeof(fpxx) * n);
 
 	return z;
 }
@@ -127,9 +130,9 @@ __device__ __host__
 	 * @param n number of columns in the matrix
 	 * @return pointer to allocated array of m elements
 	 */
-	double *z;
+	fpxx *z;
 
-	cudaMalloc(&z, sizeof(double *) * m * n);
+	cudaMalloc(&z, sizeof(fpxx) * m * n);
 
 	return {
 		z,
@@ -149,9 +152,9 @@ __device__ __host__ int *alocintvec(int n)
 	return z;
 }
 
-__device__ __host__ int initv(double *U, double *V, int n)
+__device__ __host__ int initv(fpxx *U, fpxx *V, int n)
 {
-	double *T, *W;
+	fpxx *T, *W;
 	int i;
 
 	T = U;
@@ -167,7 +170,7 @@ __device__ __host__ int initv(double *U, double *V, int n)
 	return 1;
 }
 
-__device__ __host__ int prodcv(double *y1, double c, int n, double *res)
+__device__ __host__ int prodcv(fpxx *y1, fpxx c, int n, fpxx *res)
 {
 	/**
 	 *@param y1 the vector of values
@@ -177,7 +180,7 @@ __device__ __host__ int prodcv(double *y1, double c, int n, double *res)
 	 *@return 1 if success, 0 if failed
 	 */
 	int i;
-	double *y, *z;
+	fpxx *y, *z;
 
 	y = y1;
 	z = res;
@@ -192,10 +195,10 @@ __device__ __host__ int prodcv(double *y1, double c, int n, double *res)
 	return 1;
 }
 
-__device__ __host__ int sumvect(double *y1, double *y2, int n, double *res)
+__device__ __host__ int sumvect(fpxx *y1, fpxx *y2, int n, fpxx *res)
 {
 	int i;
-	double *y, *w, *z;
+	fpxx *y, *w, *z;
 
 	z = res;
 	y = y1;
@@ -218,8 +221,8 @@ __device__ __host__
 {
 	int threadIndex = threadIdx.x + (blockDim.x + threadIdx.y);
 
-	double *z;
-	double Min, Max, Max2;
+	fpxx *z;
+	fpxx Min, Max, Max2;
 	int i, imin, imax, imax2;
 	Min = *P.cell(0, ds);
 	imin = 0;
@@ -277,22 +280,22 @@ __device__ __host__
 	return P;
 }
 
-__device__ double PF(double *x, double *rt, double *pt, curandState *randState, double *hsV)
+__device__ fpxx PF(fpxx *x, fpxx *rt, fpxx *pt, curandState *randState, fpxx *hsV)
 {
 	printf("pf start");
 
 	DMatrix hs = allocmat(B, 2);
-	double *Probi = allocvec(B);
-	double *piMalik = allocvec(B + 1);
+	fpxx *Probi = allocvec(B);
+	fpxx *piMalik = allocvec(B + 1);
 	int *sigmacount = alocintvec(B);
 
-	const double mu = x[0];
-	const double phi = x[1];
-	const double sigma = x[2];
-	const double mud = x[3];
+	const fpxx mu = x[0];
+	const fpxx phi = x[1];
+	const fpxx sigma = x[2];
+	const fpxx mud = x[3];
 
-	double phi2 = pow(phi, 2.0);
-	double sigma2 = sigma * sigma;
+	fpxx phi2 = pow(phi, 2.0);
+	fpxx sigma2 = sigma * sigma;
 
 	for (int cont = 0; cont < B; cont++)
 		// TODO: Was rnor between 0.0-1.0 like curand_uniform?
@@ -301,7 +304,7 @@ __device__ double PF(double *x, double *rt, double *pt, curandState *randState, 
 
 	// hs[cont][1] = mu / (1.0 - phi) + sqrt(sigma2 / (1.0 - phi2)) * rnor();
 
-	double Like = 0.0;
+	fpxx Like = 0.0;
 
 	int i0 = 0;
 
@@ -310,7 +313,7 @@ __device__ double PF(double *x, double *rt, double *pt, curandState *randState, 
 		// printf("%f\n", Like);
 		printf("%d\n", t);
 
-		double val = 0.0;
+		fpxx val = 0.0;
 
 		for (int i = 0; i < B; i++)
 			sigmacount[i] = i;
@@ -320,14 +323,14 @@ __device__ double PF(double *x, double *rt, double *pt, curandState *randState, 
 
 			/******** Step 1 *******************/
 
-			double index = mu + phi * (*hs.cell(cont, 1)) + sigma * curand_uniform(randState);
+			fpxx index = mu + phi * (*hs.cell(cont, 1)) + sigma * curand_uniform(randState);
 			hsV[cont] = index;
 			*hs.cell(cont, 1) = index;
-			//			double index = hsV[cont] = *hs.cell(cont, 1) = mu + phi * (*hs.cell(cont, 1)) + sigma * curand_uniform(randState);
+			//			fpxx index = hsV[cont] = *hs.cell(cont, 1) = mu + phi * (*hs.cell(cont, 1)) + sigma * curand_uniform(randState);
 
-			double sigmaxt = exp(*hs.cell(cont, 1) / 2);
+			fpxx sigmaxt = exp(*hs.cell(cont, 1) / 2);
 
-			double driftmu = mud;
+			fpxx driftmu = mud;
 
 			Probi[cont] = pdf_norm(rt[t], driftmu, sigmaxt);
 		}
@@ -366,7 +369,7 @@ __device__ double PF(double *x, double *rt, double *pt, curandState *randState, 
 			/* Generating from the multinomial distribution, using Malmquist ordered statistics */
 
 			int contres0 = B;
-			double a = 1.0;
+			fpxx a = 1.0;
 			for (int cont = 0; cont < B; cont++)
 			{
 				a = pow(curand_uniform(randState), 1.0 / contres0) * a;
@@ -374,7 +377,7 @@ __device__ double PF(double *x, double *rt, double *pt, curandState *randState, 
 				contres0 = contres0 - 1;
 			}
 
-			double s = 0.0;
+			fpxx s = 0.0;
 			int j = 0;
 			for (int cont = 0; cont < (B + 1); cont++)
 			{
@@ -417,7 +420,7 @@ __device__ double PF(double *x, double *rt, double *pt, curandState *randState, 
 	cudaFree(piMalik);
 
 	// time = clock() - time;
-	// double gpu_time_used = ((double)time) / 1000;
+	// fpxx gpu_time_used = ((fpxx)time) / 1000;
 	// printf("PF took %f * 1000 cycles to execute \n", gpu_time_used);
 	printf("PF completed");
 
