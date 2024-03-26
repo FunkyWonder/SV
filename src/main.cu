@@ -161,7 +161,7 @@ __global__ void nlminLvectSimplex(
 		/*  tol=2*(Pf[dim][dim]-Pf[0][dim])/(fabs(Pf[dim][dim])+fabs(Pf[0][dim])+EPS1); */
 		tol = 0.0;
 		for (j = 0; j < dim; j++)
-			tol += 2.0 * fabs(*Pf.cell(dim, j) - *Pf.cell(0, j)) / (fabs(*Pf.cell(dim, j)) + fabs(*Pf.cell(0, j)) + EPS1);
+			tol += __hmul(2.0,  __hdiv( __habs(__hsub(*Pf.cell(dim, j), *Pf.cell(0, j))) , __hadd(__hadd(__habs(*Pf.cell(dim, j)) , __habs(*Pf.cell(0, j))), EPS1) ));
 	}
 
 	if (k < (2 * n - 1))
@@ -204,18 +204,18 @@ int main(void)
 	trials = 1; // Number of trials
 	itno = 1;	 // Number of iterations
 
-	fpxx *muaux = (fpxx *)malloc(pdim * sizeof(fpxx)); // Vector for storing the auxiliary variables.
+	float* muaux = (float*)malloc(pdim * sizeof(float)); // Vector for storing the auxiliary variables.
 	tetaCons = (fpxx *)malloc(pdim * sizeof(fpxx));		 // Vector for storing the constraint variables.
 	tetainit = allocmat((itno * trials), pdim);				 // Matrix for storing the initial constraint variables.
 
 	DMatrix tetainitHost = {
-		(fpxx *)malloc(itno * trials * pdim * sizeof(fpxx)),
+		(fpxx*)malloc(itno * trials * pdim * sizeof(fpxx)),
 		itno * trials,
 		pdim
 	};
 	
 	DMatrix rtsHost = {
-		(fpxx *)malloc(itno * l * sizeof(fpxx)),
+		(fpxx*)malloc(itno * l * sizeof(fpxx)),
 		itno,
 		l
 	};

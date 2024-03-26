@@ -30,12 +30,16 @@
 #include <cuda_fp16.h>
 
 #define EPS 1.0e-12
-#define EPS1 1.0e-6
+#define EPS1 __float2half(1.0e-6)
 #define CON 1.4 /*Stepsize is decreased by CON at each iteration.*/
 #define BIG 1.0e30
 #define pdim 4
 
 #define fpxx half
+
+#define HPI __float2half(3.14159265359f)
+#define H2PI __float2half(2.0f * 3.14159265359f)
+#define HSQRT2PI __float2half(sqrt(2f * 3.14159265359f))
 
 const int B = 1000;
 const int l = 24050;// 24050
@@ -44,15 +48,15 @@ typedef unsigned int uint32;
 typedef signed int int32;
 
 /********* Pdf of univariate normal *************/
-__device__ __host__ double pdf_norm(fpxx x, fpxx mu, fpxx sigma)
+__device__ double pdf_norm(fpxx x, fpxx mu, fpxx sigma)
 {
 	fpxx val;
 
-	val = (x - mu) / sigma;
-	val = -pow(val, 2.0) / 2;
-	val = exp(val) / (sqrt(2 * M_PI) * sigma);
+	val = __hdiv(__hsub(x, mu), sigma);
+	val = __hneg(__hdiv(__hmul(val, val), 2));
+	val = __hdiv(hexp(val), __hmul(HSQRT2PI, sigma));
 
-	if (__habs(val) > 0.0)
+	if (__hgt(__habs(val), CUDART_ZERO_FP16))
 		return val;
 	else
 		return 0.0;
@@ -77,9 +81,9 @@ __device__ __host__ double pdf_norm(fpxx x, fpxx mu, fpxx sigma)
 
 __device__ __host__ int compare(int a, int b, fpxx *hsV)
 {
-	if (hsV[a] > hsV[b])
+	if (__hgt(hsV[a], hsV[b]))
 		return 1;
-	else if (hsV[a] < hsV[b])
+	else if (__hlt(hsV[a], hsV[b]))
 		return -1;
 	else
 		return 0;
@@ -294,13 +298,13 @@ __device__ fpxx PF(fpxx *x, fpxx *rt, fpxx *pt, curandState *randState, fpxx *hs
 	const fpxx sigma = x[2];
 	const fpxx mud = x[3];
 
-	fpxx phi2 = pow(phi, 2.0);
-	fpxx sigma2 = sigma * sigma;
+	fpxx phi2 = __hmul(phi, phi);
+	fpxx sigma2 = __hmul(sigma, sigma);
 
 	for (int cont = 0; cont < B; cont++)
 		// TODO: Was rnor between 0.0-1.0 like curand_uniform?
 		//*hs.cell(cont, 1) = mu / (1.0 - phi) + sqrt(sigma2 / (1.0 - phi2)) * curand_uniform(randState);
-		*hs.cell(cont, 1) = mu / (1.0 - phi) + sqrt(sigma2 / (1.0 - phi2)) * curand_uniform(randState);
+		*hs.cell(cont, 1) = _hadd(__hdiv(mu, (1.0 - phi)), __hmul(hsqrt(sigma2 / (1.0 - phi2)), curand_uniform(randState)));
 
 	// hs[cont][1] = mu / (1.0 - phi) + sqrt(sigma2 / (1.0 - phi2)) * rnor();
 
@@ -328,7 +332,7 @@ __device__ fpxx PF(fpxx *x, fpxx *rt, fpxx *pt, curandState *randState, fpxx *hs
 			*hs.cell(cont, 1) = index;
 			//			fpxx index = hsV[cont] = *hs.cell(cont, 1) = mu + phi * (*hs.cell(cont, 1)) + sigma * curand_uniform(randState);
 
-			fpxx sigmaxt = exp(*hs.cell(cont, 1) / 2);
+			fpxx sigmaxt = hexp(__hdiv(*hs.cell(cont, 1), 2));
 
 			fpxx driftmu = mud;
 
@@ -364,18 +368,20 @@ __device__ fpxx PF(fpxx *x, fpxx *rt, fpxx *pt, curandState *randState, fpxx *hs
 			piMalik[0] = Probi[0] / 2;
 			piMalik[B] = Probi[B - 1] / 2;
 			for (int cont = 1; cont < B; cont++)
-				piMalik[cont] = (Probi[cont] + Probi[cont - 1]) / 2;
+				piMalik[cont] = (Probi[cont] + Probi[cont - 1]) * __float2half(0.5);
 
 			/* Generating from the multinomial distribution, using Malmquist ordered statistics */
 
 			int contres0 = B;
-			fpxx a = 1.0;
+			fpxx a = CUDART_ONE_FP16;
 			for (int cont = 0; cont < B; cont++)
 			{
-				a = pow(curand_uniform(randState), 1.0 / contres0) * a;
+				a = pow(__float2half(curand_uniform(randState)), __float2half(0.001)) * a;
 				hsV[B - cont - 1] = a;
 				contres0 = contres0 - 1;
 			}
+
+
 
 			fpxx s = 0.0;
 			int j = 0;
