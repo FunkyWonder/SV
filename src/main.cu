@@ -38,88 +38,120 @@
 
 
 __global__ void nlminLvectSimplex(
-	DMatrix x0, int n, fpxx *lambda, fpxx *yaux, fpxx *epsin, fpxx epsilon, int dim, curandState *globalRands, fpxx *hsV)
+	DMatrix x0, int n, fpxx *lambda, fpxx *yaux, fpxx *epsin, fpxx epsilon, int dim, curandState *globalRands, fpxx *hsV_global, DMatrix *Pf_out)
 {
-	int threadIndex = threadIdx.x + (blockDim.x + threadIdx.y);
+	int threadIndex = threadIdx.x + (blockDim.x * threadIdx.y);
 	curand_init(0, threadIndex, 0, &globalRands[threadIndex]);
+
+	fpxx *hsV = hsV_global + (threadIndex * B);
 
 	curandState localState = globalRands[threadIndex];
 
-	DMatrix Pf;
+	DMatrix Pf = allocmat(dim + 1, dim + 1);
+
+	Pf_out[threadIndex] = Pf;
 
 	fpxx *G, *z, *Ptry, *Ptry2, *w, *vec;
 
 	fpxx ftry, ftry2, tol;
 
-	int i, j, j1, k;
+	int j1, k;
 
 	G = allocvec(dim);
 	z = allocvec(dim);
-	Pf = allocmat(dim + 1, dim + 1);
 	Ptry = allocvec(dim + 1);
 	Ptry2 = allocvec(dim + 1);
 	w = allocvec(dim);
 	vec = allocvec(dim);
 
-	for (i = 0; i < dim + 1; i++) {
-		for (j = 0; j < dim; j++) {
-			*(Pf.cell(i, j)) = *x0.cell(threadIndex, j);
+	for(int j = 0; j < pdim; j++) {
+		printf("%f ", __half2float(*x0.cell(j, threadIndex)));
+	}
+
+	printf("\n < -- simplex %u", threadIndex);
+
+	for (int i = 0; i < dim + 1; i++) {
+		for (int j = 0; j < dim; j++) {
+			*(Pf.cell(j, i)) = *x0.cell(j, threadIndex);
 		}
 	}
-  
-	for (i = 0; i < dim; i++) {
+
+	for (int i = 0; i < dim; i++) {
 		*(Pf.cell(i + 1, i)) = *(Pf.cell(i + 1, i)) + lambda[i];
 	}
 
-
-	for (i = 0; i < dim + 1; i++) {
-		*Pf.cell(i, dim) = PF(Pf.cell(i, 0), yaux, epsin, &localState, hsV);
+	for (int i = 0; i < dim + 1; i++) {
+		for (int j=0; j < dim + 1; j++) {
+			printf("PF: %f\n", __half2float(*Pf.cell(i, j)));
+		}
+		*Pf.cell(dim, i) = PF(Pf.row(i), yaux, epsin, &localState, hsV);
 	}
 
 	k = 0;
-
 	
 	Pf = sortm(Pf, dim);
-
-	tol = 1.0;
+	
+	tol = CUDART_ONE_FP16;
 
 	for (k = 0; k < n; k++)
 	{
-		printf("%f", tol);
-		if (tol < epsilon)
-		{
-			k = 2 * n;
+		assert(!isnan(__half2float(tol)));
+		if (tol < epsilon) {
+			break;
 		}
 		else
 		{
-			for (j = 0; j < dim; j++)
-				G[j] = 0.0;
-			for (i = 0; i < dim + 1; i++)
+			for (int j = 0; j < dim; j++) {
+				G[j] = CUDART_ZERO_FP16;
+			}
+
+			for(int i=0;i<dim + 1;i++) {
+				for(int j=0;j<dim + 1;j++) {
+					printf("%f ", __half2float(*Pf.cell(j, i)));
+				}
+				printf("\n");
+			}
+
+			printf("PF\n");
+
+			for (int i = 0; i < dim + 1; i++)
 			{
-				sumvect(G, Pf.row(i), dim, w);
+				sumvect(G, Pf.row(i), dim, w); // G is empty, so w gets filled with Pf.row(i)
 				initv(G, w, dim);
 			}
-			prodcv(G, 1.0 / (dim + 1), dim, w);
-			initv(G, w, dim);
-			prodcv(Pf.row(dim), -1.0, dim, w);
+
+			for(int i=0;i<dim + 1;i++) {
+				printf("%f ", __half2float(Ptry[i]));
+			}
+			printf(" ptry 1 \n");
+
+			prodcv(G, __float2half(1.0 / (dim + 1)), dim, w);
+			initv(G, w, dim); // Copy w to G
+			prodcv(Pf.row(dim), __float2half(-1.0), dim, w);
 			sumvect(G, w, dim, vec);
-			prodcv(vec, 2.0 * (dim + 1) / dim, dim, w);
+			prodcv(vec, __float2half(2.0 * (dim + 1) / dim), dim, w);
 			sumvect(Pf.row(dim), w, dim, Ptry);
+	
+			for(int i=0;i<dim + 1;i++) {
+				printf("%f ", __half2float(Ptry[i]));
+			}
+			printf(" ptry 2 \n");
+
 			ftry = PF(Ptry, yaux, epsin, &localState, hsV);
 			if (ftry < *Pf.cell(0, dim))
 			{
-				prodcv(vec, 1.0 * (dim + 1) / dim, dim, w);
+				prodcv(vec, __float2half(1.0 * (dim + 1) / dim), dim, w);
 				sumvect(Ptry, w, dim, Ptry2);
 				ftry2 = PF(Ptry2, yaux, epsin, &localState, hsV);
 				if (ftry2 < ftry)
 				{
-					for (j = 0; j < dim; j++)
+					for (int j = 0; j < dim; j++)
 						*Pf.cell(dim, j) = Ptry2[j];
 					*Pf.cell(dim, dim) = ftry2;
 				}
 				else
 				{
-					for (j = 0; j < dim; j++)
+					for (int j = 0; j < dim; j++)
 						*Pf.cell(dim, j) = Ptry[j];
 					*Pf.cell(dim, dim) = ftry;
 				}
@@ -128,41 +160,65 @@ __global__ void nlminLvectSimplex(
 			{
 				if (ftry > *Pf.cell(dim - 1, dim))
 				{
-					prodcv(vec, 0.5 * (dim + 1) / dim, dim, w);
+					prodcv(vec, __float2half(0.5 * (dim + 1) / dim), dim, w);
 					sumvect(Pf.row(dim), w, dim, Ptry);
 					ftry = PF(Ptry, yaux, epsin, &localState, hsV);
 					if (ftry > *Pf.cell(dim, dim))
 					{
-						for (j = 1; j < dim + 1; j++)
+						for (int j = 1; j < dim + 1; j++)
 						{
 							sumvect(Pf.row(0), Pf.row(j), dim, w);
 							prodcv(w, 0.5, dim, z);
-							for (j1 = 0; j1 < dim; j1++)
+							for (int j1 = 0; j1 < dim; j1++) {
 								*Pf.cell(j, j1) = z[j1];
+							}
 							*Pf.cell(j, dim) = PF(Pf.row(j), yaux, epsin, &localState, hsV);
+							printf("4 %f", __half2float(*Pf.cell(j, dim)));
 						}
 					}
 					else
 					{
-						for (j = 0; j < dim; j++)
+						for (int j = 0; j < dim; j++) {
+							// printf("\n2 Ptry[j]%f", __half2float(Ptry[j]));
 							*Pf.cell(dim, j) = Ptry[j];
+						}
 						*Pf.cell(dim, dim) = ftry;
 					}
 				}
 				else
 				{
-					for (j = 0; j < dim; j++)
+					for (int j = 0; j < dim; j++) {
+						// printf("\n1 Ptry[j]%f", __half2float(Ptry[j]));
 						*Pf.cell(dim, j) = Ptry[j];
+					}
 					*Pf.cell(dim, dim) = ftry;
 				}
 			}
 			Pf = sortm(Pf, dim);
 		}
+
 		/*  tol=2*(Pf[dim][dim]-Pf[0][dim])/(fabs(Pf[dim][dim])+fabs(Pf[0][dim])+EPS1); */
-		tol = 0.0;
-		for (j = 0; j < dim; j++)
-			tol += __hmul(2.0,  __hdiv( __habs(__hsub(*Pf.cell(dim, j), *Pf.cell(0, j))) , __hadd(__hadd(__habs(*Pf.cell(dim, j)) , __habs(*Pf.cell(0, j))), EPS1) ));
+		tol = __double2half(0.0);
+
+		for (int j = 0; j < dim; j++) {
+			// tol += __hmul(2.0,  __hdiv( __habs(__hsub(*Pf.cell(dim, j), *Pf.cell(0, j))) , __hadd(__hadd(__habs(*Pf.cell(dim, j)), __habs(*Pf.cell(0, j))), EPS1) ));
+			tol += __hmul(2.0, (__habs(*Pf.cell(dim, j) - *Pf.cell(0, j)) / (__habs(*Pf.cell(dim, j)) + __habs(*Pf.cell(0, j)) + EPS1)));
+
+			// printf("4 first first part nlminvectlsimplex %f\n", __half2float(*Pf.cell(dim, j)));
+			// printf("4 first second part nlminvectlsimplex %f\n", __half2float(*Pf.cell(0, j)));
+
+			// printf("4 first part nlminvectlsimplex %f\n", __half2float(__hsub(*Pf.cell(dim, j), *Pf.cell(0, j))));
+
+			// printf("4 second part  nlminvectlsimplex %f\n", __half2float(__hadd(__habs(*Pf.cell(dim, j)), __habs(*Pf.cell(0, j))), EPS1));
+
+			printf("4 tol nlminvectlsimplex %f\n", __half2float(tol));
+		}
 	}
+
+	cudaFree(G);
+	cudaFree(z);
+	cudaFree(Ptry);
+	cudaFree(Ptry2);
 
 	if (k < (2 * n - 1))
 	{
@@ -201,17 +257,17 @@ int main(void)
 	FILE *fp; // File pointer
 	char s[30], outputFile[100];
 
-	trials = 1; // Number of trials
+	trials = 20; // Number of trials (20)
 	itno = 1;	 // Number of iterations
 
 	float* muaux = (float*)malloc(pdim * sizeof(float)); // Vector for storing the auxiliary variables.
 	tetaCons = (fpxx *)malloc(pdim * sizeof(fpxx));		 // Vector for storing the constraint variables.
-	tetainit = allocmat((itno * trials), pdim);				 // Matrix for storing the initial constraint variables.
+	tetainit = allocmat(pdim, (itno * trials));				 // Matrix for storing the initial constraint variables.
 
 	DMatrix tetainitHost = {
 		(fpxx*)malloc(itno * trials * pdim * sizeof(fpxx)),
-		itno * trials,
-		pdim
+		pdim,
+		itno * trials
 	};
 	
 	DMatrix rtsHost = {
@@ -223,7 +279,7 @@ int main(void)
 	rts = allocmat(itno, l);   // Matrix for storing the time series. 1 by 24050
 	thrust::device_vector<fpxx> pt(l); // Vector for storing the time series.
 
-	thrust::device_vector<fpxx> hsV(B);
+	thrust::device_vector<fpxx> hsV(B * trials);
 
 	muaux[0] = -0.190749834;
 	muaux[1] = 0.977385697;
@@ -236,9 +292,14 @@ int main(void)
 
 	for (i = 0; i < (itno * trials); i++) // Loops over the trials times itno.
 	{
-		for (j = 0; j < pdim; j++) // pdim=4, trials=20, and itno=1
+		for (j = 0; j < pdim; j++) { // pdim=4, trials=20, and itno=1
 			// For each trial, fill a vector with "muaux[j] * (0.99 + 0.02 * uni())" (uses ziggurat)
-			*tetainitHost.cell(i, j) = muaux[j] * (0.99 + 0.02 * dis(gen));
+			float value = muaux[j] * (0.99 + 0.02 * dis(gen));
+			assert(!isnan(value));
+			printf("%f ", value);
+			*tetainitHost.cell(j, i) = __float2half(value);
+		}
+		printf("\n");
 	}
 
 	const char* filename = "GSPC19280104-20230929.txt";
@@ -285,7 +346,7 @@ int main(void)
 
 	minval = BIG; // Big heeft een waarde van 1.0e30
 	for (i = 0; i < pdim; i++) {
-		tetaCons[i] = *tetainitHost.cell(0, i); // tetaCons is een vector van 4, tetainit is een matrix van 4x20
+		tetaCons[i] = *tetainitHost.cell(i, 0); // tetaCons is een vector van 4, tetainit is een matrix van 4x20
 	}
 
 	cudaMemcpy(tetainit.ptr, tetainitHost.ptr, tetainitHost.w * tetainitHost.h * sizeof(fpxx), cudaMemcpyHostToDevice);
@@ -300,32 +361,66 @@ int main(void)
 	curandState *states;
 	cudaMalloc(&states, sizeof(curandState) * trials);
 
+	DMatrix* pfOut;
+	cudaMalloc(&pfOut, sizeof(DMatrix) * trials);
+
 	printf("Starting main function!\n");
 	// nlminLvectSimplex<<<1, trials >>>(tetainit, 2000, lambda, rts.row(0), pt, Weightmatrix, Weightmatrix, EPS1, pdim, states, hsV);
-	nlminLvectSimplex<<<1, trials>>>(tetainit, 2000, thrust::raw_pointer_cast(lambdaDevice.data()), rts.row(0), thrust::raw_pointer_cast(pt.data()), EPS1, pdim, states, thrust::raw_pointer_cast(hsV.data()));
+	nlminLvectSimplex<<<1, trials>>>(
+		tetainit, 
+		2000, 
+		thrust::raw_pointer_cast(lambdaDevice.data()), 
+		rts.row(0), 
+		thrust::raw_pointer_cast(pt.data()), 
+		EPS1, 
+		pdim, 
+		states, 
+		thrust::raw_pointer_cast(hsV.data()), 
+		pfOut
+	);
 
-	// test[0][2] = fabs(test[0][2]);
+	cudaDeviceSynchronize();
 
-	// if (test[0][pdim] < minval)
-	//{
-	//	for (i = 0; i < pdim; i++)
-	//		tetaCons[i] = test[0][i];
-	//	minval = test[0][pdim];
-	// }
+	DMatrix* pfOutHost = (DMatrix*) malloc(trials * sizeof(DMatrix));
+	cudaMemcpy(pfOutHost, pfOut, trials, cudaMemcpyDeviceToHost);
 
-	//// This part of the code writes the results to a file.
-	// fp = fopen(outputFile, "a");
-	// for (i = 0; i < pdim; i++)
-	//	fprintf(fp, "%.12f	", test[0][i]); // Format the results to a fixed precision.
-	// fprintf(fp, "%.16f\n", test[0][pdim]);
-	// fclose(fp);
+	printf("done with simplex");
 
-	///*	printf("jcont=%d\n",jcont);
-	//	writemat("t",pdim+1,pdim+1,test);*/
+	for (jcont = 0; jcont < trials; jcont++) 
+	{
+		DMatrix pf = pfOutHost[jcont];
+		
+		fpxx* halfs = (fpxx*) malloc(sizeof(fpxx) * pf.w * pf.h);
+		cudaMemcpy(halfs, pf.ptr, pf.w * pf.h * sizeof(fpxx), cudaMemcpyDeviceToHost);
 
-	// freemat(test, pdim + 1);
+		// pf.free();
+		pf.ptr = halfs;
 
-	// End main loop
+		*pf.cell(0, 2) = __float2half(fabs(__half2float(*pf.cell(0, 2))));
+
+		//max val of fp16, or so
+		fpxx minval = __float2half(66504.0);
+
+		if (*pf.cell(0, pdim) < minval)
+		{
+			for (i = 0; i < pdim; i++) {
+				tetaCons[i] = *pf.cell(0, i);
+			}
+			minval = *pf.cell(0, pdim);
+		}
+
+		fp = fopen(outputFile, "a");
+		for (i = 0; i < pdim; i++) {
+			fprintf(fp, "%.12f	", *pf.cell(0, i));
+		}
+		fprintf(fp, "%.16f\n", *pf.cell(0, pdim));
+		fclose(fp);
+
+		/*	printf("jcont=%d\n",jcont);
+			writemat("t",pdim+1,pdim+1,test);*/
+
+		// free(pf.ptr);
+	}
 
 	// This part of the code frees the memory allocated for the matrices and vectors.
 	free(muaux);
