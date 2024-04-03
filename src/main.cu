@@ -40,7 +40,12 @@
 __global__ void nlminLvectSimplex(
 	DMatrix x0, int n, fpxx *lambda, fpxx *yaux, fpxx *epsin, fpxx epsilon, int dim, curandState *globalRands, fpxx *hsV_global, DMatrix *Pf_out)
 {
-	int threadIndex = threadIdx.x + (blockDim.x * threadIdx.y);
+	int threadsPerBlock  = blockDim.x * blockDim.y;
+	int threadNumInBlock = threadIdx.x + blockDim.x * threadIdx.y;
+	int blockNumInGrid = blockIdx.x + gridDim.x * blockIdx.y;
+
+	int threadIndex = blockNumInGrid * threadsPerBlock + threadNumInBlock;
+
 	curand_init(0, threadIndex, 0, &globalRands[threadIndex]);
 
 	fpxx *hsV = hsV_global + (threadIndex * B);
@@ -64,11 +69,11 @@ __global__ void nlminLvectSimplex(
 	w = allocvec(dim);
 	vec = allocvec(dim);
 
-	for(int j = 0; j < pdim; j++) {
-		printf("%f ", __half2float(*x0.cell(j, threadIndex)));
-	}
+	// for(int j = 0; j < pdim; j++) {
+		// printf("%f ", __half2float(*x0.cell(j, threadIndex)));
+	// }
 
-	printf("\n < -- simplex %u", threadIndex);
+	// printf("\n < -- simplex %u", threadIndex);
 
 	for (int i = 0; i < dim + 1; i++) {
 		for (int j = 0; j < dim; j++) {
@@ -81,9 +86,10 @@ __global__ void nlminLvectSimplex(
 	}
 
 	for (int i = 0; i < dim + 1; i++) {
-		for (int j=0; j < dim + 1; j++) {
-			printf("PF: %f\n", __half2float(*Pf.cell(i, j)));
-		}
+		// for (int j=0; j < dim + 1; j++) {
+			// printf("PF: %f\n", __half2float(*Pf.cell(i, j)));
+		// }
+		printf("thread: %u, PF: %u", threadIndex, i);
 		*Pf.cell(dim, i) = PF(Pf.row(i), yaux, epsin, &localState, hsV);
 	}
 
@@ -95,6 +101,8 @@ __global__ void nlminLvectSimplex(
 
 	for (k = 0; k < n; k++)
 	{
+		printf("thread: %u, k: %u", threadIndex, k);
+
 		assert(!isnan(__half2float(tol)));
 		if (tol < epsilon) {
 			break;
@@ -105,14 +113,14 @@ __global__ void nlminLvectSimplex(
 				G[j] = CUDART_ZERO_FP16;
 			}
 
-			for(int i=0;i<dim + 1;i++) {
-				for(int j=0;j<dim + 1;j++) {
-					printf("%f ", __half2float(*Pf.cell(j, i)));
-				}
-				printf("\n");
-			}
+			// for(int i=0;i<dim + 1;i++) {
+			// 	for(int j=0;j<dim + 1;j++) {
+			// 		printf("%f ", __half2float(*Pf.cell(j, i)));
+			// 	}
+			// 	printf("\n");
+			// }
 
-			printf("PF\n");
+			// printf("PF\n");
 
 			for (int i = 0; i < dim + 1; i++)
 			{
@@ -120,10 +128,10 @@ __global__ void nlminLvectSimplex(
 				initv(G, w, dim);
 			}
 
-			for(int i=0;i<dim + 1;i++) {
-				printf("%f ", __half2float(Ptry[i]));
-			}
-			printf(" ptry 1 \n");
+			// for(int i=0;i<dim + 1;i++) {
+			// 	printf("%f ", __half2float(Ptry[i]));
+			// }
+			// printf(" ptry 1 \n");
 
 			prodcv(G, __float2half(1.0 / (dim + 1)), dim, w);
 			initv(G, w, dim); // Copy w to G
@@ -132,10 +140,10 @@ __global__ void nlminLvectSimplex(
 			prodcv(vec, __float2half(2.0 * (dim + 1) / dim), dim, w);
 			sumvect(Pf.row(dim), w, dim, Ptry);
 	
-			for(int i=0;i<dim + 1;i++) {
-				printf("%f ", __half2float(Ptry[i]));
-			}
-			printf(" ptry 2 \n");
+			// for(int i=0;i<dim + 1;i++) {
+			// 	printf("%f ", __half2float(Ptry[i]));
+			// }
+			// printf(" ptry 2 \n");
 
 			ftry = PF(Ptry, yaux, epsin, &localState, hsV);
 			if (ftry < *Pf.cell(0, dim))
@@ -173,7 +181,7 @@ __global__ void nlminLvectSimplex(
 								*Pf.cell(j, j1) = z[j1];
 							}
 							*Pf.cell(j, dim) = PF(Pf.row(j), yaux, epsin, &localState, hsV);
-							printf("4 %f", __half2float(*Pf.cell(j, dim)));
+							// printf("4 %f", __half2float(*Pf.cell(j, dim)));
 						}
 					}
 					else
@@ -211,7 +219,7 @@ __global__ void nlminLvectSimplex(
 
 			// printf("4 second part  nlminvectlsimplex %f\n", __half2float(__hadd(__habs(*Pf.cell(dim, j)), __habs(*Pf.cell(0, j))), EPS1));
 
-			printf("4 tol nlminvectlsimplex %f\n", __half2float(tol));
+			// printf("4 tol nlminvectlsimplex %f\n", __half2float(tol));
 		}
 	}
 
@@ -219,6 +227,8 @@ __global__ void nlminLvectSimplex(
 	cudaFree(z);
 	cudaFree(Ptry);
 	cudaFree(Ptry2);
+	cudaFree(w);
+	cudaFree(vec);
 
 	if (k < (2 * n - 1))
 	{
@@ -257,7 +267,7 @@ int main(void)
 	FILE *fp; // File pointer
 	char s[30], outputFile[100];
 
-	trials = 20; // Number of trials (20)
+	trials = 400; // Number of trials (20)
 	itno = 1;	 // Number of iterations
 
 	float* muaux = (float*)malloc(pdim * sizeof(float)); // Vector for storing the auxiliary variables.
@@ -366,7 +376,7 @@ int main(void)
 
 	printf("Starting main function!\n");
 	// nlminLvectSimplex<<<1, trials >>>(tetainit, 2000, lambda, rts.row(0), pt, Weightmatrix, Weightmatrix, EPS1, pdim, states, hsV);
-	nlminLvectSimplex<<<1, trials>>>(
+	nlminLvectSimplex<<<trials / 100, 100>>>(
 		tetainit, 
 		2000, 
 		thrust::raw_pointer_cast(lambdaDevice.data()), 

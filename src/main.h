@@ -44,7 +44,7 @@
 
 // const int B = 1000;
 const int B = 1000;
-const int l = 24050;// 24050
+const int l = 1000;// 24050
 
 typedef unsigned int uint32;
 typedef signed int int32;
@@ -363,8 +363,6 @@ __global__ void PF_seg_1(DMatrix hs, fpxx mu, fpxx phi, fpxx phi2, fpxx sigma2, 
 
 __device__ fpxx PF(fpxx *x, fpxx *rt, fpxx *pt, curandState *randState, fpxx *hsV)
 {
-	printf("pf start\n");
-
 	DMatrix hs = allocmat(B, 2);
 	fpxx *Probi = allocvec(B);
 	fpxx *piMalik = allocvec(B + 1);
@@ -375,17 +373,17 @@ __device__ fpxx PF(fpxx *x, fpxx *rt, fpxx *pt, curandState *randState, fpxx *hs
 	const fpxx sigma = x[2];
 	const fpxx mud = x[3];
 
-	printf("phi %f", __half2float(phi));
+	// printf("phi %f", __half2float(phi));
 
 	const fpxx one = CUDART_ONE_FP16;
 
 	fpxx phi2 = phi * phi;
 	fpxx sigma2 = sigma * sigma;
 
-	assert((CUDART_ONE_FP16 - phi) != CUDART_ZERO_FP16);
-	assert(phi2 != CUDART_ONE_FP16);
+	// assert((CUDART_ONE_FP16 - phi) != CUDART_ZERO_FP16);
+	// assert(phi2 != CUDART_ONE_FP16);
 
-	assert(phi2 <= CUDART_ONE_FP16);
+	// assert(phi2 <= CUDART_ONE_FP16);
 	// assert(sigma2 >= CUDART_ZERO_FP16);
 
 	// PF_seg_1<<<1, B>>>(hs, mu, phi, phi2, sigma2, randState);
@@ -405,7 +403,7 @@ __device__ fpxx PF(fpxx *x, fpxx *rt, fpxx *pt, curandState *randState, fpxx *hs
 	for (int t = i0; t < l; t++)
 	{
 		// printf("%f\n", Like);
-		// printf("%d\n", t);
+		printf("%d\n", t);
 
 		fpxx val = 0.0;
 
@@ -456,7 +454,7 @@ __device__ fpxx PF(fpxx *x, fpxx *rt, fpxx *pt, curandState *randState, fpxx *hs
 		if (fabs(__half2float(val)) > 0.0)
 		{
 			Like += hlog(val / __float2half(B));
-			assert(!isinf(__half2float(Like)));
+			//assert(!isinf(__half2float(Like)));
 
 			for (int cont = 0; cont < B; cont++) {
 				Probi[cont] = Probi[cont] / val;
@@ -529,7 +527,8 @@ __device__ fpxx PF(fpxx *x, fpxx *rt, fpxx *pt, curandState *randState, fpxx *hs
 	// time = clock() - time;
 	// fpxx gpu_time_used = ((fpxx)time) / 1000;
 	// printf("PF took %f * 1000 cycles to execute \n", gpu_time_used);
-	printf("\nLike: %f\n", __half2float(-Like));
+	// printf("\nLike: %f\n", __half2float(-Like));
+
 	return -Like;
 }
 
