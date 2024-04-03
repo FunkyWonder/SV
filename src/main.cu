@@ -89,7 +89,7 @@ __global__ void nlminLvectSimplex(
 		// for (int j=0; j < dim + 1; j++) {
 			// printf("PF: %f\n", __half2float(*Pf.cell(i, j)));
 		// }
-		printf("thread: %u, PF: %u", threadIndex, i);
+		printf("thread: %u, PF: %u\n", threadIndex, i);
 		*Pf.cell(dim, i) = PF(Pf.row(i), yaux, epsin, &localState, hsV);
 	}
 
@@ -101,7 +101,7 @@ __global__ void nlminLvectSimplex(
 
 	for (k = 0; k < n; k++)
 	{
-		printf("thread: %u, k: %u", threadIndex, k);
+		printf("thread: %u, k: %u\n", threadIndex, k);
 
 		assert(!isnan(__half2float(tol)));
 		if (tol < epsilon) {

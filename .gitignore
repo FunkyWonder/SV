@@ -12,6 +12,11 @@ CTestTestfile.cmake
 _deps
 build/
 
+./test/*
+./.idea/*
+
+.vs/*
+
 ### Linux ###
 *~
 

@@ -402,9 +402,6 @@ __device__ fpxx PF(fpxx *x, fpxx *rt, fpxx *pt, curandState *randState, fpxx *hs
 
 	for (int t = i0; t < l; t++)
 	{
-		// printf("%f\n", Like);
-		printf("%d\n", t);
-
 		fpxx val = 0.0;
 
 		for (int i = 0; i < B; i++) {
